@@ -40,7 +40,6 @@
     stoneTexture.repeat.set(3.2, 2.4);
     pavingTexture.repeat.set(24, 24);
     woodTexture.repeat.set(1.6, 1.2);
-    fabricTexture.repeat.set(1.4, 1.4);
     waterTexture.repeat.set(3.5, 3.5);
     const stoneMats = [0xd6bf98, 0xcbb28a, 0xe0cba4, 0xc4a77d].map(color =>
       new THREE.MeshStandardMaterial({ map: stoneTexture, bumpMap: stoneTexture, bumpScale: .1, color: color, roughness: .92, flatShading: true }));
