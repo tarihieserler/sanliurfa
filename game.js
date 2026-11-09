@@ -11,8 +11,8 @@
 
   function boot() {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xbadbd4);
-    scene.fog = new THREE.Fog(0xbadbd4, 48, 100);
+    scene.background = new THREE.Color(0xa8ddd5);
+    scene.fog = new THREE.Fog(0xb6ded4, 54, 110);
     const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .08, 120);
     camera.rotation.order = 'YXZ';
     const mobile = matchMedia('(max-width: 720px)').matches;
@@ -24,8 +24,8 @@
     renderer.outputEncoding = THREE.sRGBEncoding;
     $('#game').appendChild(renderer.domElement);
     const canvas = renderer.domElement;
-    scene.add(new THREE.HemisphereLight(0xfff4df, 0x77664e, 1.15));
-    const sun = new THREE.DirectionalLight(0xffe5c1, 1.25);
+    scene.add(new THREE.HemisphereLight(0xfff2d8, 0x746044, 1.35));
+    const sun = new THREE.DirectionalLight(0xffdfaa, 1.65);
     sun.position.set(-16, 26, 12); sun.castShadow = !mobile;
     sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.camera.left = -32; sun.shadow.camera.right = 32;
@@ -35,9 +35,36 @@
 
     const stoneTexture = makeTexture('stone');
     const pavingTexture = makeTexture('paving');
+    const woodTexture = makeTexture('wood');
+    const waterTexture = makeTexture('water');
+    stoneTexture.repeat.set(3.2, 2.4);
+    pavingTexture.repeat.set(24, 24);
+    woodTexture.repeat.set(1.6, 1.2);
+    fabricTexture.repeat.set(1.4, 1.4);
+    waterTexture.repeat.set(3.5, 3.5);
     const stoneMats = [0xd6bf98, 0xcbb28a, 0xe0cba4, 0xc4a77d].map(color =>
-      new THREE.MeshStandardMaterial({ map: stoneTexture, color: color, roughness: .95, flatShading: true }));
-    const floorMat = new THREE.MeshStandardMaterial({ map: pavingTexture, color: 0xe8d4ac, roughness: .96 });
+      new THREE.MeshStandardMaterial({ map: stoneTexture, bumpMap: stoneTexture, bumpScale: .1, color: color, roughness: .92, flatShading: true }));
+    const floorMat = new THREE.MeshStandardMaterial({ map: pavingTexture, bumpMap: pavingTexture, bumpScale: .055, color: 0xffffff, roughness: .96 });
+    const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, bumpMap: woodTexture, bumpScale: .035, color: 0xe4c187, roughness: .82 });
+    const fabricMats = new Map();
+    const fabricMat = color => {
+      if (!fabricMats.has(color)) {
+        const c = document.createElement('canvas'); c.width = c.height = 256;
+        const ctx = c.getContext('2d'), hex = '#' + Number(color).toString(16).padStart(6, '0');
+        ctx.fillStyle = hex; ctx.fillRect(0, 0, 256, 256);
+        for (let x = 0; x < 256; x += 48) {
+          ctx.fillStyle = x % 96 === 0 ? '#fff4d9' : '#744d3c'; ctx.globalAlpha = .24; ctx.fillRect(x, 0, 24, 256);
+        }
+        ctx.globalAlpha = .12; ctx.strokeStyle = '#fff8e8'; ctx.lineWidth = 1;
+        for (let y = 2; y < 256; y += 6) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y + 2); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+        const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 4; tex.encoding = THREE.sRGBEncoding;
+        fabricMats.set(color, new THREE.MeshStandardMaterial({ map: tex, bumpMap: tex, bumpScale: .02, color: 0xffffff, roughness: .93, side: THREE.DoubleSide }));
+      }
+      return fabricMats.get(color);
+    };
+    const waterMat = new THREE.MeshPhongMaterial({ map: waterTexture, color: 0xffffff, specular: 0xc2fff5, shininess: 95, transparent: true, opacity: .97, side: THREE.DoubleSide });
+    const copperMat = new THREE.MeshStandardMaterial({ color: 0xb97843, metalness: .48, roughness: .36, flatShading: true });
     const mats = {};
     const mat = (color, rough) => {
       const k = color + ':' + (rough || .9);
@@ -114,7 +141,6 @@
 
     // Halilürrahman Gölü: turquoise water, paved walking edge, stone coping and channel.
     cylinder(8.5, 8.5, .42, 0xc5aa81, 0, .1, 0, world, 64);
-    const waterMat = new THREE.MeshPhongMaterial({ color: 0x42b4bb, specular: 0xc2fff4, shininess: 90, transparent: true, opacity: .94, side: THREE.DoubleSide });
     const water = new THREE.Mesh(new THREE.CircleGeometry(8.08, 64), waterMat);
     water.rotation.x = -Math.PI / 2; water.position.y = .33; world.add(water);
     const edge = new THREE.Mesh(new THREE.RingGeometry(8.1, 8.52, 64), mat(0xe0cba5));
@@ -154,8 +180,8 @@
 
     // Small seating nooks and flower pots around the water.
     function bench(x, z, angle) {
-      const g = group(x, 0, z), seat = box(1.65, .14, .45, 0x96704c, 0, .62, 0, g);
-      seat.rotation.y = angle; const back = box(1.65, .54, .12, 0xa57d55, 0, .97, -.16, g); back.rotation.y = angle;
+      const g = group(x, 0, z), seat = box(1.65, .14, .45, 0x96704c, 0, .62, 0, g, woodMat);
+      seat.rotation.y = angle; const back = box(1.65, .54, .12, 0xa57d55, 0, .97, -.16, g, woodMat); back.rotation.y = angle;
       for (const dx of [-.62, .62]) cylinder(.06, .07, .58, 0x765d43, dx, .3, 0, g, 7);
       const sx = Math.abs(Math.cos(angle)) * .9 + Math.abs(Math.sin(angle)) * .3;
       const sz = Math.abs(Math.sin(angle)) * .9 + Math.abs(Math.cos(angle)) * .3;
@@ -195,8 +221,11 @@
       cylinder(.16, .2, 2.65, 0xc1a47b, cx + 1.2, 1.32, portalZ, world, 9);
       arch(cx, 2.58, portalZ, 1.2, 0xe8d6b4);
       // The door leaves stand open; the gap between them is the walkable entrance.
-      box(.28, 2.05, .1, 0x795a40, cx - 1.02, 1.02, portalZ + face * .04);
-      box(.28, 2.05, .1, 0x916844, cx + 1.02, 1.02, portalZ + face * .04);
+      box(.28, 2.05, .1, 0x795a40, cx - 1.02, 1.02, portalZ + face * .04, world, woodMat);
+      box(.28, 2.05, .1, 0x916844, cx + 1.02, 1.02, portalZ + face * .04, world, woodMat);
+      for (let tile = -4; tile <= 4; tile++) {
+        box(.28, .14, .13, tile % 2 ? 0x4b8883 : 0xe2a45b, cx + tile * .34, 3.68, portalZ + face * .06);
+      }
       for (const dx of [-3.9, -2.55, 2.55, 3.9]) {
         box(.58, 1.1, .08, 0x779287, cx + dx, 2.55, portalZ);
         box(.76, .12, .13, 0xe1cda7, cx + dx, 3.12, portalZ + face * .05);
@@ -247,13 +276,13 @@
       box(w - 1, .12, d - 1, 0xd7c39f, cx, .08, cz - face * (d / 2 - .9));
       // Corner returns preserve the courtyard; the facade gap is the only entrance.
       for (const dx of [-1, 1]) stoneWall(cx + dx * (w / 2 - .53), 1.45, cz - face * (d / 2 - .9), .22, 2.9, 1.7, variant, true);
-      box(.62, 2.2, .12, 0x795940, cx - .43, 1.1, front + face * .32).rotation.y = face > 0 ? -.58 : .58;
+      box(.62, 2.2, .12, 0x795940, cx - .43, 1.1, front + face * .32, world, woodMat).rotation.y = face > 0 ? -.58 : .58;
       box(1.9, .13, .15, 0xe3d0ab, cx, 2.43, front + face * .32);
       for (const dx of [-w * .28, w * .28]) {
         box(.78, .82, .11, 0x789188, cx + dx, 2.25, front + face * .32);
         box(.96, .12, .16, 0xc5a77b, cx + dx, 2.73, front + face * .35);
       }
-      box(2.5, .12, 1.8, 0x9d7751, cx, 4.83, cz - face * (d / 2 - .6));
+      box(2.5, .12, 1.8, 0x9d7751, cx, 4.83, cz - face * (d / 2 - .6), world, woodMat);
       for (const dx of [-1, 1]) cylinder(.055, .055, 1.1, 0x8c704e, cx + dx, 4.4, cz - face * (d / 2 - .6), world, 7);
     }
     courtyardHouse(-22, -20.5, 8, 7, 0, 1); courtyardHouse(22, -20.5, 8, 7, 2, 1);
@@ -262,15 +291,15 @@
     // Bazaar: copperware, spice jars, handwoven textiles and striped awnings.
     function stall(x, z, canopy, type) {
       const g = group(x, 0, z);
-      box(3.35, 1.5, 2.15, 0xb28d65, 0, .75, 0, g);
-      box(3.65, .15, 2.65, canopy, 0, 2.2, 0, g);
+      box(3.35, 1.5, 2.15, 0xb28d65, 0, .75, 0, g, woodMat);
+      box(3.65, .15, 2.65, canopy, 0, 2.2, 0, g, fabricMat(canopy));
       for (let i = -2; i <= 2; i++) box(.12, .08, 2.7, i % 2 ? 0xf0d9aa : canopy, i * .72, 2.29, 0, g);
       for (const dx of [-1.48, 1.48]) cylinder(.075, .09, 2.12, 0x806044, dx, 1.08, 0, g, 7);
       box(3, .6, .24, 0xd2b181, 0, 1.36, 1.12, g);
       obstacleBox(x, z, 3.5, 2.5);
       if (type === 'copper') for (let i = 0; i < 5; i++) {
-        const px = -1.15 + i * .56, pot = sphere(.24, i % 2 ? 0xb97947 : 0xc18b51, px, 1.92, 1.08, g, 10);
-        pot.scale.set(.8, .94, .8); cylinder(.1, .17, .2, 0xc28c53, px, 2.12, 1.08, g, 8);
+        const px = -1.15 + i * .56, pot = sphere(.24, i % 2 ? 0xb97947 : 0xc18b51, px, 1.92, 1.08, g, 10, copperMat);
+        pot.scale.set(.8, .94, .8); cylinder(.1, .17, .2, 0xc28c53, px, 2.12, 1.08, g, 8, copperMat);
       }
       else if (type === 'spice') for (let i = 0; i < 6; i++) {
         const px = -1.18 + (i % 3) * 1.16, pz = .63 + Math.floor(i / 3) * .5;
@@ -556,6 +585,8 @@
     function frame(now) {
       requestAnimationFrame(frame);
       const dt = Math.min(.035, (now - last) / 1000 || 0); last = now;
+      waterTexture.offset.x = (now * .000012) % 1;
+      waterTexture.offset.y = (now * .000008) % 1;
       for (const f of fish) {
         f.mesh.position.x = f.x + Math.cos(now * .00038 + f.phase) * .9;
         f.mesh.position.z = f.z + Math.sin(now * .00032 + f.phase) * .7;
@@ -621,27 +652,55 @@
     const x = c.getContext('2d'); let seed = kind === 'stone' ? 41 : 83;
     const rand = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
     if (kind === 'stone') {
-      x.fillStyle = '#cbb28a'; x.fillRect(0, 0, 512, 512);
-      for (let row = 0; row < 14; row++) {
-        const h = 36, shift = row % 2 ? -26 : 0;
-        for (let xx = shift; xx < 550; xx += 88 + Math.floor(rand() * 22)) {
-          const w = 75 + Math.floor(rand() * 27), yy = row * h;
-          const colors = ['#dfcaa4', '#d3bc92', '#e4d1ad', '#c8ad81', '#d8c29b'];
-          x.fillStyle = colors[Math.floor(rand() * colors.length)]; x.fillRect(xx + 2, yy + 2, w - 4, h - 4);
-          x.strokeStyle = '#aa916d'; x.lineWidth = 2; x.strokeRect(xx + 2, yy + 2, w - 4, h - 4);
-          x.fillStyle = '#f0dfbf'; x.fillRect(xx + 5, yy + 4, w - 10, 2);
-          for (let s = 0; s < 10; s++) { x.fillStyle = rand() > .5 ? '#b99d75' : '#f0ddb9'; x.globalAlpha = .25; x.fillRect(xx + rand() * w, yy + rand() * h, 1 + rand() * 2, 1 + rand() * 2); }
+      x.fillStyle = '#8f7656'; x.fillRect(0, 0, 512, 512);
+      for (let row = 0; row < 16; row++) {
+        const h = 32, shift = row % 2 ? -31 : 0;
+        for (let xx = shift; xx < 550; xx += 72 + Math.floor(rand() * 22)) {
+          const w = 62 + Math.floor(rand() * 30), yy = row * h;
+          const colors = ['#f0d59d', '#d8b579', '#e9c98e', '#c9a36f', '#f4dfb3', '#d2ad79'];
+          x.fillStyle = '#806746'; x.fillRect(xx, yy, w, h);
+          x.fillStyle = colors[Math.floor(rand() * colors.length)]; x.fillRect(xx + 3, yy + 3, w - 7, h - 7);
+          x.fillStyle = '#fff0c7'; x.globalAlpha = .82; x.fillRect(xx + 5, yy + 4, w - 12, 3); x.globalAlpha = 1;
+          x.fillStyle = '#9d7a50'; x.globalAlpha = .4; x.fillRect(xx + 4, yy + h - 6, w - 9, 2); x.globalAlpha = 1;
+          for (let s = 0; s < 24; s++) {
+            x.fillStyle = rand() > .5 ? '#fff1ca' : '#9a774e'; x.globalAlpha = .25 + rand() * .25;
+            x.fillRect(xx + 4 + rand() * (w - 8), yy + 4 + rand() * (h - 8), 1 + rand() * 3, 1 + rand() * 2);
+          }
           x.globalAlpha = 1;
         }
       }
-    } else {
-      x.fillStyle = '#dfcda9'; x.fillRect(0, 0, 512, 512);
-      for (let y = 0; y < 512; y += 64) for (let xx = 0; xx < 512; xx += 64) {
-        const off = ((y / 64) % 2) ? 32 : 0;
-        x.fillStyle = rand() > .5 ? '#e5d5b5' : '#d8c49e'; x.fillRect(xx + off + 2, y + 2, 60, 60);
-        x.strokeStyle = '#c1ad89'; x.lineWidth = 2; x.strokeRect(xx + off + 2, y + 2, 60, 60);
+    } else if (kind === 'paving') {
+      x.fillStyle = '#b69d77'; x.fillRect(0, 0, 512, 512);
+      const colors = ['#f1dfb8', '#deca9f', '#ead6ad', '#d2bd94', '#f5e5c5'];
+      for (let y = 0; y < 512; y += 42) for (let xx = -30; xx < 550; xx += 62) {
+        const off = ((y / 42) % 2) ? 31 : 0, px = xx + off;
+        x.fillStyle = '#a78d68'; x.fillRect(px, y, 60, 40);
+        x.fillStyle = colors[Math.floor(rand() * colors.length)]; x.fillRect(px + 2, y + 2, 56, 36);
+        x.fillStyle = '#fff0cf'; x.globalAlpha = .75; x.fillRect(px + 4, y + 3, 52, 2); x.globalAlpha = 1;
+        for (let i = 0; i < 6; i++) { x.fillStyle = rand() > .5 ? '#c2a77e' : '#fff2d4'; x.globalAlpha = .33; x.fillRect(px + rand() * 54, y + rand() * 34, 2, 2); }
       }
-      for (let i = 0; i < 500; i++) { x.fillStyle = rand() > .5 ? '#f2e5c8' : '#bba681'; x.globalAlpha = .25; x.fillRect(rand() * 512, rand() * 512, 1.5, 1.5); }
+      x.globalAlpha = 1;
+    } else if (kind === 'wood') {
+      x.fillStyle = '#7b4b2e'; x.fillRect(0, 0, 512, 512);
+      for (let y = 0; y < 512; y += 74) {
+        const palette = ['#b97a45', '#c58a50', '#a96c3f', '#d09b5f'];
+        x.fillStyle = palette[Math.floor(rand() * palette.length)]; x.fillRect(0, y + 2, 512, 70);
+        x.strokeStyle = '#75452d'; x.lineWidth = 3; x.strokeRect(0, y + 2, 512, 70);
+        for (let i = 0; i < 19; i++) {
+          const yy = y + 5 + rand() * 64;
+          x.strokeStyle = rand() > .5 ? '#e2b67a' : '#78482d'; x.globalAlpha = .35; x.lineWidth = 1 + rand() * 2;
+          x.beginPath(); x.moveTo(0, yy); x.bezierCurveTo(140, yy - 7, 330, yy + 6, 512, yy - 2); x.stroke();
+        }
+      }
+      x.globalAlpha = 1;
+    } else {
+      // Blue-green water streaks on a turquoise base; animated UV drift suggests a gentle current.
+      x.fillStyle = '#2d9fa9'; x.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 150; i++) {
+        const yy = rand() * 512, xx = rand() * 512, len = 12 + rand() * 82;
+        x.strokeStyle = rand() > .42 ? '#a9eee0' : '#277e8b'; x.globalAlpha = .18 + rand() * .38; x.lineWidth = 1 + rand() * 3;
+        x.beginPath(); x.moveTo(xx, yy); x.bezierCurveTo(xx + len * .3, yy - 4, xx + len * .7, yy + 4, xx + len, yy); x.stroke();
+      }
       x.globalAlpha = 1;
     }
     const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 4; tex.encoding = THREE.sRGBEncoding; return tex;
