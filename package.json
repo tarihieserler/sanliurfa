@@ -1,0 +1,10 @@
+{
+  "name": "sanliurfa-minik-kasifler",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Şanlıurfa'dan ilham alan çocuk dostu 3D keşif oyunu prototipi",
+  "scripts": {
+    "dev": "node server.js"
+  }
+}
+

@@ -2,45 +2,58 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#f5c778">
-  <meta name="description" content="Şanlıurfa'nın Balıklıgöl'ünü, kalesini ve tarihî çarşılarını keşfet!">
-  <title>Urfa'nın Minik Kaşifleri</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#d9c193">
+  <meta name="description" content="Balıklıgöl'de çocuklar için birinci şahıs keşif macerası.">
+  <title>Urfa'nın Minik Kaşifleri — Balıklıgöl</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main id="game" aria-label="Şanlıurfa keşif oyunu"></main>
-  <section id="start-screen" class="screen">
-    <div class="intro-card">
-      <span class="eyebrow">3D ŞEHİR KEŞFİ</span>
-      <h1>Urfa'nın Minik<br><em>Kaşifleri</em></h1>
-      <p>Balıklıgöl'den çarşıya uzanan sıcacık bir maceraya hazır mısın?</p>
-      <div class="avatar-picker" aria-label="Kaşifini seç">
-        <button class="avatar-option selected" data-outfit="coral" aria-label="Mercan kıyafet">🧢</button>
-        <button class="avatar-option" data-outfit="teal" aria-label="Turkuaz kıyafet">🎒</button>
-        <button class="avatar-option" data-outfit="lilac" aria-label="Lila kıyafet">🌼</button>
-      </div>
-      <button id="start-button" class="primary-button">Şehri keşfet <span>→</span></button>
-      <small>Bilgisayar: WASD / yön tuşları · Etkileşim: E</small>
+  <main id="game" aria-label="Balıklıgöl 3D keşif oyunu"></main>
+  <section id="welcome" class="overlay">
+    <div class="welcome-card">
+      <div class="eyebrow">ŞANLIURFA · BÖLÜM 1</div>
+      <h1>Balıklıgöl'ün<br><span>İzinde</span></h1>
+      <p>Göl kıyısında rehberini bul, tarihî yapıları tanı ve üç parıltılı hatırayı keşfet.</p>
+      <div class="controls-note"><span>⌨️</span> WASD ile yürü <i>·</i><span>🖱️</span> Fare ile bak<br><span>📱</span> Joystick ile yürü, ekrana dokunup sürükleyerek bak</div>
+      <button id="start" class="primary">Balıklıgöl'e git <span>→</span></button>
+      <small>Oyunda anlatılan yerel efsaneler, tarihî bilgilerden ayrı belirtilir.</small>
     </div>
-    <div class="start-sticker fish-sticker">🐟</div><div class="start-sticker sun-sticker">☀️</div>
   </section>
   <header id="hud" class="hidden">
-    <button id="home-button" class="icon-button" aria-label="Ana menü">⌂</button>
-    <div class="mission-card"><span class="mission-icon">🧭</span><div><small>ŞİMDİKİ GÖREV</small><strong id="mission-text">Balıklıgöl'ü bul</strong></div></div>
-    <div class="collection-pill"><span>✨</span><b id="star-count">0</b><small>/ 5</small></div>
+    <div class="quest"><span>🧭</span><div><small>GÖREV</small><b id="quest-text">Rehber Zeynep'i bul</b></div></div>
+    <div class="collect"><span>✨</span><b id="collect-count">0</b><small>/ 3</small></div>
+    <button id="sound" class="hud-button" aria-label="Sesi aç veya kapat">🔊</button>
+    <button id="home" class="hud-button" aria-label="Ana menü">⌂</button>
   </header>
-  <div id="prompt" class="prompt hidden">Yaklaş ve <kbd>E</kbd>'ye bas</div>
-  <div id="toast" role="status"></div>
-  <div id="joystick" class="hidden" aria-label="Hareket kontrolü"><span></span></div>
-  <button id="interact-button" class="touch-action hidden" aria-label="Etkileşim">✋</button>
-  <section id="dialog" class="dialog hidden" role="dialog" aria-modal="true"></section>
-  <aside id="discovery" class="discovery hidden"><span>📍</span><div><b id="discovery-title"></b><small id="discovery-copy"></small></div></aside>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
-  <script src="game.js"></script>
+  <div id="crosshair" class="hidden"><i></i></div>
+  <div id="interaction-hint" class="hint hidden">E — konuş / keşfet</div>
+  <div id="joystick" class="joystick hidden" aria-label="Hareket joystick'i"><i></i></div>
+  <button id="touch-action" class="touch-action hidden" aria-label="Konuş veya keşfet">✋</button>
+  <div id="look-hint" class="look-hint hidden">Ekranı sürükle: kamerayı çevir</div>
+  <section id="dialog" class="dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-card"><div id="speaker-icon" class="speaker-icon">🧕🏻</div><div id="speaker-name" class="speaker-name">Rehber Zeynep</div><p id="dialog-text"></p><div class="dialog-footer"><small id="dialog-progress"></small><button id="dialog-next" class="primary small">Devam <span>→</span></button></div></div>
+  </section>
+  <div id="toast" class="toast hidden" role="status"></div>
+  <section id="error" class="error hidden"><div><h2>Oyun açılamadı</h2><p id="error-message">3D sahne başlatılamadı.</p><button onclick="location.reload()" class="primary small">Yeniden dene</button></div></section>
+  <script>
+    (() => {
+      const urls = [
+        'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+        'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'
+      ];
+      const load = i => {
+        if (i >= urls.length) {
+          document.querySelector('#error-message').textContent = '3D oyun kütüphanesi yüklenemedi. İnternet bağlantını kontrol edip sayfayı yenile.';
+          document.querySelector('#error').classList.remove('hidden'); return;
+        }
+        const s = document.createElement('script'); s.src = urls[i];
+        s.onload = () => { const g = document.createElement('script'); g.src = 'game.js'; g.onerror = () => { document.querySelector('#error-message').textContent = 'Oyun dosyası yüklenemedi. Klasörde index.html, game.js ve style.css dosyalarının birlikte olduğuna bak.'; document.querySelector('#error').classList.remove('hidden'); }; document.body.appendChild(g); };
+        s.onerror = () => load(i + 1); document.head.appendChild(s);
+      };
+      load(0);
+    })();
+  </script>
 </body>
 </html>
 

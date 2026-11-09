@@ -1,18 +1,24 @@
-# Urfa'nın Minik Kaşifleri
+# Urfa'nın Minik Kaşifleri — Balıklıgöl
 
-Tarayıcıda çalışan, Şanlıurfa'dan ilham alan çocuk dostu bir 3D keşif oyunu prototipi.
+Şanlıurfa'daki Balıklıgöl çevresinde geçen, birinci şahıs kameralı 3D keşif oyunu dilimi.
 
-## Oynama
+## Başlatma
 
-`index.html` dosyasını bir web sunucusuyla açın. Three.js, CDN üzerinden yüklenir; internet bağlantısı gerekir.
+1. ZIP'i yeni bir klasöre çıkarın.
+2. Klasörde terminal açın.
+3. `npm run dev` komutunu çalıştırın.
+4. Terminalde görünen `http://localhost:5173` adresini tarayıcıda açın.
 
-- Bilgisayar: WASD veya yön tuşlarıyla yürü, `E` ile yakındaki yerleri keşfet.
-- Telefon/tablet: sol alttaki sanal joystick ile yürü, sağ alttaki el düğmesiyle etkileş.
-- Balıklıgöl, tarihî çarşı, taş evler ve Urfa Kalesi tabelalarına yaklaşarak küçük bilgi sorularını aç.
-- Balıklıgöl çevresindeki beş parıltıyı topla; ilerlemen bu tarayıcıda saklanır.
-- Başlangıç ekranında üç kaşif kıyafetinden birini seç.
+Node.js gerekir. `npm install` gerekmez. Three.js için internet bağlantısı gerekir; iki CDN adresi sırayla denenir.
 
-## Prototip içeriği
+## Kontroller
 
-İzometrik ortografik kamera, geometrik 3D şehir, takip kamerası, yürüme animasyonu, klavye ve dokunmatik kontroller, etkileşimli tarihî yerler, bilgi mini oyunu ve yerel koleksiyon kaydı.
+- Bilgisayar: `WASD` ile yürü, fareyle etrafa bak, `E` ile konuş veya etkileş.
+- Telefon/tablet: sol alttaki joystick ile yürü, sahneyi parmağınla sürükleyerek bak, sağ alttaki el düğmesiyle konuş.
+- `Esc` fareyi serbest bırakır. Diyaloglarda `E` veya Devam düğmesiyle ilerle.
+- Üç ışıklı hatıra taşı topla. Rehberle konuşma ve koleksiyon ilerlemesi tarayıcıya kaydedilir.
+
+## Bu bölümde
+
+Halilürrahman Gölü, taş yürüyüş halkası, balıklar, Rızvaniye ve Halilürrahman camilerinden esinlenen yapılar, medrese revakı, avlulu taş evler, bakırcı ve baharat tezgâhları, rehber ve gezgin NPC'ler, Türkçe diyaloglar, ortam sesi ve fiziksel nesne çarpışmaları bulunur.
 
