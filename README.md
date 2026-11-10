@@ -20,5 +20,4 @@ Node.js gerekir. `npm install` gerekmez. Three.js için internet bağlantısı g
 
 ## Bu bölümde
 
-Halilürrahman Gölü, taş yürüyüş halkası, balıklar, Rızvaniye ve Halilürrahman camilerinden esinlenen yapılar, medrese revakı, avlulu taş evler, bakırcı ve baharat tezgâhları, rehber ve gezgin NPC'ler, Türkçe diyaloglar, ortam sesi ve fiziksel nesne çarpışmaları bulunur.
-
+Halilürrahman Gölü, taş yürüyüş halkası, balıklar, Rızvaniye ve Halilürrahman camilerinden esinlenen yapılar, medrese revakı, avlulu taş evler, bakırcı ve baharat tezgâhları, rehber ve gezgin NPC'ler, Türkçe diyaloglar ve fiziksel nesne çarpışmaları bulunur. Yürüyüş yüzeyine göre değişen taş, çim ve toprak ayak sesleri; çarşı tezgâhlarının yanında belirginleşen konumsal kalabalık mırıltısı; balıklarla birlikte hareket eden su halkaları; göl üzerinde süzülen martılar ve hatıra taşlarını çevreleyen altın tozları da eklendi. Ses ilk oyun etkileşimiyle açılır; sol üstteki ses düğmesiyle kapatılabilir.

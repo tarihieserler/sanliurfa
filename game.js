@@ -11,8 +11,8 @@
 
   function boot() {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xa8ddd5);
-    scene.fog = new THREE.Fog(0xb6ded4, 54, 110);
+    scene.background = new THREE.Color(0xb8c9d0);
+    scene.fog = new THREE.Fog(0xc9c1b5, 38, 105);
     const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .08, 120);
     camera.rotation.order = 'YXZ';
     const mobile = matchMedia('(max-width: 720px)').matches;
@@ -22,28 +22,34 @@
     renderer.shadowMap.enabled = !mobile;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     $('#game').appendChild(renderer.domElement);
     const canvas = renderer.domElement;
-    scene.add(new THREE.HemisphereLight(0xfff2d8, 0x746044, 1.35));
-    const sun = new THREE.DirectionalLight(0xffdfaa, 1.65);
-    sun.position.set(-16, 26, 12); sun.castShadow = !mobile;
-    sun.shadow.mapSize.set(1024, 1024);
+    scene.add(new THREE.HemisphereLight(0xe2eaf7, 0xa79b80, 1.02));
+    const sun = new THREE.DirectionalLight(0xffd5a8, 1.12);
+    sun.position.set(-21, 22, 15); sun.castShadow = !mobile;
+    sun.shadow.mapSize.set(768, 768); sun.shadow.radius = 5;
     sun.shadow.camera.left = -32; sun.shadow.camera.right = 32;
     sun.shadow.camera.top = 32; sun.shadow.camera.bottom = -32;
     sun.shadow.bias = -.0005; scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xd6f1e9, .3); fill.position.set(10, 8, -12); scene.add(fill);
+    const fill = new THREE.DirectionalLight(0xc7d8ef, .28);
+    fill.position.set(10, 8, -12); scene.add(fill);
 
     const stoneTexture = makeTexture('stone');
     const pavingTexture = makeTexture('paving');
+    const soilTexture = makeTexture('soil');
     const woodTexture = makeTexture('wood');
     const waterTexture = makeTexture('water');
-    stoneTexture.repeat.set(3.2, 2.4);
-    pavingTexture.repeat.set(24, 24);
+    const grassTexture = makeTexture('grass');
+    pavingTexture.repeat.set(14, 14);
+    soilTexture.repeat.set(1.2, 1.2);
     woodTexture.repeat.set(1.6, 1.2);
-    waterTexture.repeat.set(3.5, 3.5);
-    const stoneMats = [0xd6bf98, 0xcbb28a, 0xe0cba4, 0xc4a77d].map(color =>
-      new THREE.MeshStandardMaterial({ map: stoneTexture, bumpMap: stoneTexture, bumpScale: .1, color: color, roughness: .92, flatShading: true }));
-    const floorMat = new THREE.MeshStandardMaterial({ map: pavingTexture, bumpMap: pavingTexture, bumpScale: .055, color: 0xffffff, roughness: .96 });
+    waterTexture.repeat.set(2, 2);
+    const stoneMats = [0xf4e6d0, 0xe9dac2, 0xf0e4d3, 0xe1d1bd].map(color =>
+      new THREE.MeshStandardMaterial({ map: stoneTexture, bumpMap: mobile ? null : stoneTexture, bumpScale: .028, color: color, roughness: .95 }));
+    const floorMat = new THREE.MeshStandardMaterial({ map: pavingTexture, bumpMap: mobile ? null : pavingTexture, bumpScale: .025, color: 0xffffff, roughness: .94 });
+    const soilMat = new THREE.MeshStandardMaterial({ map: soilTexture, color: 0xffffff, roughness: 1, side: THREE.DoubleSide });
     const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, bumpMap: woodTexture, bumpScale: .035, color: 0xe4c187, roughness: .82 });
     const fabricMats = new Map();
     const fabricMat = color => {
@@ -62,7 +68,7 @@
       }
       return fabricMats.get(color);
     };
-    const waterMat = new THREE.MeshPhongMaterial({ map: waterTexture, color: 0xffffff, specular: 0xc2fff5, shininess: 95, transparent: true, opacity: .97, side: THREE.DoubleSide });
+    const waterMat = new THREE.MeshPhongMaterial({ map: waterTexture, color: 0xe8f4ef, specular: 0x9fc1bd, shininess: 64, transparent: true, opacity: .98, side: THREE.DoubleSide });
     const copperMat = new THREE.MeshStandardMaterial({ color: 0xb97843, metalness: .48, roughness: .36, flatShading: true });
     const mats = {};
     const mat = (color, rough) => {
@@ -70,12 +76,36 @@
       if (!mats[k]) mats[k] = new THREE.MeshStandardMaterial({ color: color, roughness: rough || .9, flatShading: true });
       return mats[k];
     };
-    const world = new THREE.Group(); scene.add(world);
-    const solids = [], people = [], fish = [], ripples = [], sparkles = [];
+    const maps = [
+      {
+        name: 'Göl Bahçesi', description: 'Kıyıda saklanan kuş figürünü, bakır ibriği ve çiniyi bul.',
+        guide: 'Rehber Zeynep’i bul', objective: '3 el yapımı hatırayı bul',
+        items: ['Kuş figürü', 'Bakır ibrik', 'Renkli çini'],
+        spots: [[-8.9, 7], [8.7, 7.5], [0, -12.5]], spawn: [-13, 17, -.12], limit: 27.4
+      },
+      {
+        name: 'Usta Avlusu', description: 'Taş avludaki atölyeleri dolaş ve üç çalışma aletini bul.',
+        guide: 'Usta Derya’yı bul', objective: '3 atölye aletini bul',
+        items: ['Ahşap tokmak', 'Desen kalıbı', 'Boyama fırçası'],
+        spots: [[-10, 4], [10, -8], [0, -12]], spawn: [0, 14.5, 0], limit: 17.5
+      }
+    ].map(map => ({ ...map, world: new THREE.Group(), solids: [], people: [], sparkles: [], grassZones: [], soilZones: [] }));
+    for (const map of maps) scene.add(map.world);
+    let mapIndex, map, world, solids, people, sparkles, grassZones, soilZones;
+    function useMap(index) {
+      mapIndex = index;
+      map = maps[index];
+      ({ world, solids, people, sparkles, grassZones, soilZones } = map);
+      maps.forEach((entry, i) => { entry.world.visible = i === index; });
+    }
+    useMap(0);
+    const fish = [], ripples = [], fishRipples = [], gulls = [];
     const player = { x: -13, z: 17, eye: 1.67, radius: .34, yaw: -.12, pitch: -.01, vx: 0, vz: 0, bob: 0 };
     let active = false, isLocked = false, isTalking = false, looking = false;
     let targetYaw = player.yaw, targetPitch = player.pitch, nearby = null;
-    let progress = loadProgress(), toastTimer = 0, audio = null, muted = false;
+    const saved = loadProgress(maps);
+    let progress = saved.levels[0], toastTimer = 0, audio = null, muted = false, masterGain = null, ambientGain = null, stepBuffer = null, footstepClock = 0, birdTimer = 0, marketUpdateTimer = 0;
+    const marketVoices = [];
     let last = 0, walkTime = 0;
     const keys = {};
     const geoCache = { box: new Map(), sphere: new Map(), cylinder: new Map() };
@@ -116,7 +146,22 @@
     }
     function stoneWall(x, y, z, w, h, d, variant, collide) {
       const material = stoneMats[((variant || 0) % stoneMats.length + stoneMats.length) % stoneMats.length];
-      const m = box(w, h, d, 0xffffff, x, y, z, world, material);
+      const key = 'masonry:' + [w, h, d].join(':');
+      if (!geoCache.box.has(key)) {
+        const geometry = new THREE.BoxGeometry(w, h, d);
+        const uv = geometry.attributes.uv;
+        // Keep the courses at the same scale on short piers and long walls.
+        for (let i = 0; i < uv.count; i++) {
+          const face = Math.floor(i / 4);
+          const width = face < 2 ? d : w;
+          const height = face === 2 || face === 3 ? d : h;
+          uv.setXY(i, uv.getX(i) * width / 2.65, uv.getY(i) * height / 2.4);
+        }
+        geoCache.box.set(key, geometry);
+      }
+      const m = new THREE.Mesh(geoCache.box.get(key), material);
+      m.position.set(x, y, z);
+      add(m);
       if (collide !== false) obstacleBox(x, z, w, d, y, h, m);
       return m;
     }
@@ -128,6 +173,34 @@
     // Broad open plaza: tiled stone ground and visible low walls define the playable edge.
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(62, 62), floorMat);
     ground.rotation.x = -Math.PI / 2; ground.position.y = -.07; ground.receiveShadow = true; world.add(ground);
+    const grassMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    const meadowMat = new THREE.MeshLambertMaterial({ map: grassTexture, transparent: true, alphaTest: .05, depthWrite: false });
+    function grassPatch(cx, cz, radius) {
+      const disk = new THREE.Mesh(new THREE.CircleGeometry(radius, 24), meadowMat);
+      disk.rotation.x = -Math.PI / 2; disk.position.set(cx, -.015, cz);
+      disk.receiveShadow = true; add(disk, world, false);
+      const verts = [], colors = [];
+      for (let i = 0; i < (mobile ? 64 : 110); i++) {
+        const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * (radius - .16);
+        const bx = Math.cos(a) * r, bz = Math.sin(a) * r, width = .035 + Math.random() * .045, height = .12 + Math.random() * .28;
+        verts.push(bx - width, .015, bz, bx + width, .015, bz, bx + Math.cos(a + 1.1) * width, height, bz + Math.sin(a + 1.1) * width);
+        const col = new THREE.Color([0x68864b, 0x8ba25e, 0xa0a963, 0x5f8559][i % 4]);
+        for (let k = 0; k < 3; k++) colors.push(col.r, col.g, col.b);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geo.computeVertexNormals();
+      const blades = new THREE.Mesh(geo, grassMat); blades.position.set(cx, 0, cz); add(blades, world, false);
+      grassZones.push({ x: cx, z: cz, r: radius });
+    }
+    function soilPatch(cx, cz, radius) {
+      const patch = new THREE.Mesh(new THREE.CircleGeometry(radius, 20), soilMat);
+      patch.rotation.x = -Math.PI / 2; patch.position.set(cx, -.012, cz); add(patch, world, false);
+      soilZones.push({ x: cx, z: cz, r: radius });
+    }
+    [[-16, -14, 3], [18, -12, 3.2], [-18, 13, 2.8], [17, 6, 2.4], [-7, 18, 2.7], [5, 18, 2.6], [-13.8, -8.8, 2.5]].forEach(p => grassPatch(p[0], p[1], p[2]));
+    [[-20, -5, 1.7], [20, -19, 1.8], [-20, 20, 1.6], [20, 11, 1.5]].forEach(p => soilPatch(p[0], p[1], p[2]));
     // Boundary stone wall: it is visible and its collision matches the stone blocks.
     for (let x = -25; x <= 25; x += 5) {
       stoneWall(x, .9, -28, 4.85, 1.8, .42, 1, true);
@@ -138,18 +211,75 @@
     stoneWall(-28, .9, 0, .42, 1.8, 56, 2, true);
     stoneWall(28, .9, 0, .42, 1.8, 56, 1, true);
 
-    // Halilürrahman Gölü: turquoise water, paved walking edge, stone coping and channel.
+    // Small groves frame the view across the pool and leave the walkways open.
+    const grove = [
+      [-18.6, 13.6, 1.04], [-20, 11.4, .78], [-7.9, 18.8, .94],
+      [4.6, 18.3, .9], [5.8, 20.5, .75], [16.8, 6.6, .79],
+      [18.6, -12.7, .96], [20.5, -13.5, .8], [-16.7, -14.9, .98],
+      [-14.2, -9.3, .84], [-10.9, -21.9, 1.1], [-8.5, -24.5, .88],
+      [17.3, -24.5, 1.05], [24.7, -7.9, .92], [-24.8, -5.9, .97]
+    ];
+    const canopyColors = [0x557d59, 0x688853, 0x7d9b61, 0x93a467, 0x54795f];
+    const trunks = [], crowns = [], flowers = [];
+    for (const [i, [x, z, scale]] of grove.entries()) {
+      trunks.push([x, 1.18 * scale, z, .22 * scale, 2.6 * scale, .22 * scale, 0, 0x897056]);
+      obstacleCircle(x, z, .25 * scale);
+      crowns.push([x, 3.6 * scale, z, 1.42 * scale, 1.55 * scale, 1.37 * scale, i, canopyColors[i % 5]]);
+      for (let branch = 0; branch < 4; branch++) {
+        const angle = branch * Math.PI / 2 + i * .71;
+        const offset = branch % 2 ? 1.01 : .77;
+        const bx = x + Math.cos(angle) * offset * scale;
+        const bz = z + Math.sin(angle) * offset * scale;
+        crowns.push([bx, (2.87 + branch * .18) * scale, bz, 1.1 * scale, 1.02 * scale, 1.07 * scale, angle, canopyColors[(i + branch + 1) % 5]]);
+      }
+      if (i < 10) {
+        const dx = x + .92 * Math.cos(i), dz = z + .92 * Math.sin(i);
+        crowns.push([dx, .2, dz, .52, .29, .39, i, 0x718958]);
+        for (let bud = 0; bud < 6; bud++) {
+          const a = bud * 2.4 + i;
+          flowers.push([dx + Math.cos(a) * .27, .37 + .07 * Math.sin(bud), dz + Math.sin(a) * .25,
+            .085, .065, .085, a, [0xd69b73, 0xe2c472, 0xe2b3a4][i % 3]]);
+        }
+      }
+    }
+    function addGardenInstances(geometry, entries, castShadow) {
+      const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const batch = new THREE.InstancedMesh(geometry, material, entries.length);
+      const pose = new THREE.Object3D();
+      for (const [i, [x, y, z, sx, sy, sz, turn, color]] of entries.entries()) {
+        pose.position.set(x, y, z); pose.scale.set(sx, sy, sz); pose.rotation.y = turn;
+        pose.updateMatrix();
+        batch.setMatrixAt(i, pose.matrix); batch.setColorAt(i, new THREE.Color(color));
+      }
+      batch.instanceMatrix.needsUpdate = true;
+      batch.instanceColor.needsUpdate = true;
+      batch.frustumCulled = false;
+      batch.castShadow = castShadow && !mobile;
+      batch.receiveShadow = true;
+      world.add(batch);
+    }
+    addGardenInstances(new THREE.CylinderGeometry(.7, 1, 1, 7), trunks, true);
+    addGardenInstances(new THREE.IcosahedronGeometry(1, mobile ? 0 : 1), crowns, true);
+    addGardenInstances(new THREE.IcosahedronGeometry(1, 0), flowers, false);
+
+    // The garden pool is framed by a stone coping and an inlaid path.
     cylinder(8.5, 8.5, .42, 0xc5aa81, 0, .1, 0, world, 64);
     const water = new THREE.Mesh(new THREE.CircleGeometry(8.08, 64), waterMat);
     water.rotation.x = -Math.PI / 2; water.position.y = .33; world.add(water);
     const edge = new THREE.Mesh(new THREE.RingGeometry(8.1, 8.52, 64), mat(0xe0cba5));
     edge.rotation.x = -Math.PI / 2; edge.position.y = .38; add(edge);
     const walk = new THREE.Mesh(new THREE.RingGeometry(8.55, 13.8, 96), floorMat);
-    walk.rotation.x = -Math.PI / 2; walk.position.y = .045; add(walk, world, false);
+    const walkUV = walk.geometry.attributes.uv;
+    for (let i = 0; i < walkUV.count; i++) {
+      walkUV.setXY(i, walkUV.getX(i) * 27.6 / 62, walkUV.getY(i) * 27.6 / 62);
+    }
+    walk.rotation.x = -Math.PI / 2; walk.position.y = .045; walk.receiveShadow = true; add(walk, world, false);
+    const border = new THREE.Mesh(new THREE.RingGeometry(13.35, 13.52, 96), mat(0xaaa184));
+    border.rotation.x = -Math.PI / 2; border.position.y = .048; border.receiveShadow = true; add(border, world, false);
     for (let i = 0; i < 64; i++) {
       const a = i * Math.PI * 2 / 64, r = 8.52;
-      const stone = box(.74, .24, .52, i % 3 ? 0xd4bd94 : 0xe3d0aa, Math.cos(a) * r, .42, Math.sin(a) * r);
-      stone.rotation.y = -a;
+      const stone = box(.82, .22, .56, i % 3 ? 0xd4bd94 : 0xe3d0aa, Math.cos(a) * r, .42, Math.sin(a) * r);
+      stone.rotation.y = Math.PI / 2 - a;
     }
     // Water rills, carved retaining edges and a little stone crossing.
     const rill = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 12), waterMat);
@@ -166,7 +296,14 @@
       const tail = new THREE.Mesh(new THREE.ConeGeometry(.19, .34, 4), mat(color));
       tail.position.x = -.4; tail.rotation.z = Math.PI / 2; add(tail, f, false);
       sphere(.034, 0x253c3c, .2, .06, .18, f, 7);
+      const fishIndex = fish.length;
       fish.push({ mesh: f, x: x, z: z, phase: phase });
+      for (let ringNo = 0; ringNo < 2; ringNo++) {
+        const rippleMat = new THREE.MeshBasicMaterial({ color: 0xd4fff2, transparent: true, opacity: .38, depthWrite: false, side: THREE.DoubleSide });
+        const ripple = new THREE.Mesh(new THREE.TorusGeometry(.28 + ringNo * .2, .018, 5, 22), rippleMat);
+        ripple.rotation.x = -Math.PI / 2; ripple.position.y = .39 + ringNo * .002; add(ripple, world, false);
+        fishRipples.push({ mesh: ripple, fish: fishIndex, phase: ringNo * 1.7 });
+      }
     }
     makeFish(-2, -2, 0xec9d67, .1); makeFish(3, 1, 0xe7c56e, 2.2); makeFish(1, 4, 0xef8c69, 4.1);
     makeFish(-4, 2, 0xf2c878, 5.4); makeFish(4, -3, 0xf0a16d, 1.4); makeFish(-1, 5, 0xe7bd75, 3.3);
@@ -176,6 +313,21 @@
       pad.rotation.x = -Math.PI / 2; pad.position.set(x, .365, z); add(pad, world, false);
       if (i % 3 === 0) sphere(.13, 0xf1b9a6, x + .1, .43, z, world, 7);
     }
+    function makeGull(x, z, phase) {
+      const root = group(x, 8 + phase % 1.3, z), body = sphere(.24, 0xf5f1e7, 0, 0, 0, root, 8);
+      body.scale.set(1.45, .65, .72);
+      sphere(.12, 0xf8f4ea, .24, .05, 0, root, 7);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(.075, .22, 5), mat(0xe3a04b));
+      beak.rotation.z = -Math.PI / 2; beak.position.set(.42, .025, 0); add(beak, root, false);
+      const wings = [];
+      for (const side of [-1, 1]) {
+        const hinge = group(side * .04, .025, 0, root);
+        const wing = box(.78, .045, .22, 0xf6f2e9, side * .37, 0, 0, hinge);
+        wing.rotation.y = side * .08; wings.push({ hinge: hinge, side: side });
+      }
+      gulls.push({ mesh: root, wings: wings, x: x, z: z, phase: phase });
+    }
+    makeGull(-2, -1, .2); makeGull(1, 2, 1.9); makeGull(2, -3, 3.4);
 
     // Small seating nooks and flower pots around the water.
     function bench(x, z, angle) {
@@ -323,101 +475,267 @@
     }
     for (const p of [[-14, 9], [-14, -1], [14, 8], [12, -8], [-5, 14], [5, 14]]) flowerPot(p[0], p[1], [0x779b72, 0xe1ad8c, 0xe0bf5c]);
 
-    // NPCs: local guide, a copper artisan, a young visitor and two strolling neighbours.
+    const npcBody = new THREE.LatheGeometry([
+      [0, -.35], [.17, -.35], [.245, -.32], [.279, -.25], [.292, -.14],
+      [.299, -.01], [.291, .13], [.27, .24], [.21, .31], [.105, .335], [0, .335]
+    ].map(([radius, height]) => new THREE.Vector2(radius, height)), mobile ? 14 : 20);
+    const npcPalettes = {
+      Zeynep: { skin: '#d99e78', cloth: '#639a89', trim: '#f2d38f', headwear: 'scarf', accent: '#e5b863', outfit: 'jacket' },
+      Hasan: { skin: '#bf825e', cloth: '#708fa3', trim: '#e9b887', headwear: 'cap', accent: '#536e7b', outfit: 'jacket' },
+      Mina: { skin: '#e3ab85', cloth: '#a3ad75', trim: '#ffe2a4', headwear: 'hair', accent: '#5b4140', outfit: 'pockets', small: true },
+      Elif: { skin: '#e5b593', cloth: '#a686ac', trim: '#f3d9a6', headwear: 'hair', accent: '#63483c', outfit: 'jacket' },
+      Ali: { skin: '#be865f', cloth: '#bd8f55', trim: '#f2dfb5', headwear: 'cap', accent: '#768c6a', outfit: 'jacket' },
+      İsmail: { skin: '#d29a73', cloth: '#a76350', trim: '#edc297', headwear: 'cap', accent: '#986a53', outfit: 'apron' },
+      Derya: { skin: '#c8906a', cloth: '#658c9c', trim: '#ebc285', headwear: 'scarf', accent: '#b97765', outfit: 'apron' },
+      Deniz: { skin: '#dba580', cloth: '#bd805a', trim: '#f5dbac', headwear: 'hair', accent: '#503e3a', outfit: 'pockets', small: true }
+    };
+
     function makePerson(x, z, options) {
-      options = options || {};
-      const root = group(x, 0, z), shirt = mat(options.shirt || 0x618f7b), skin = options.skin || 0xd5a27d;
-      const torso = box(.62, .82, .4, 0xffffff, 0, .92, 0, root, shirt);
-      const head = sphere(.28, skin, 0, 1.62, 0, root, 10);
-      sphere(.04, 0x403a32, -.1, 1.67, .255, root, 7); sphere(.04, 0x403a32, .1, 1.67, .255, root, 7);
-      const scarf = options.scarf ? sphere(.3, options.scarf, 0, 1.48, -.02, root, 8) : null;
-      if (scarf) scarf.scale.set(1.08, .48, 1);
-      if (options.hat) { cylinder(.17, .28, .15, options.hat, 0, 1.9, 0, root, 8); box(.42, .07, .28, options.hat, 0, 1.84, .17, root); }
-      const arms = [];
-      for (const side of [-1, 1]) {
-        const arm = box(.17, .58, .2, 0xffffff, side * .4, 1.02, 0, root, shirt);
-        arm.rotation.z = side * -.12; arms.push(arm);
+      const palette = npcPalettes[options.look];
+      const root = group(x, 0, z);
+      if (palette.small) root.scale.setScalar(.88);
+      const skin = new THREE.MeshStandardMaterial({ color: palette.skin, roughness: .92 });
+      const sleeve = new THREE.MeshStandardMaterial({ color: palette.cloth, roughness: .96 });
+      const headwear = new THREE.MeshStandardMaterial({ color: palette.accent, roughness: .94 });
+      const upper = group(0, .6, 0, root);
+      const outfit = new THREE.MeshStandardMaterial({ map: makeNpcOutfit(palette), roughness: .96 });
+      const torso = new THREE.Mesh(npcBody, outfit);
+      torso.position.y = .316; torso.scale.z = .76; torso.rotation.y = Math.PI;
+      add(torso, upper);
+
+      const head = group(0, .68, 0, upper);
+      const faces = [makeNpcFace(palette, false), makeNpcFace(palette, true)];
+      const faceMaterial = new THREE.MeshStandardMaterial({ map: faces[0], roughness: .94 });
+      const headShape = sphere(.322, 0xffffff, 0, .206, 0, head, mobile ? 16 : 22, faceMaterial);
+      headShape.scale.set(1, .97, .9);
+      if (palette.headwear === 'scarf') {
+        sphere(.331, 0xffffff, 0, .21, -.061, head, 15, headwear).scale.set(1.05, 1.025, .85);
+        sphere(.245, 0xffffff, 0, -.005, .006, head, 12, headwear).scale.set(.93, .43, .85);
+      } else if (palette.headwear === 'cap') {
+        sphere(.29, 0xffffff, 0, .439, -.028, head, 15, headwear).scale.set(1.04, .45, .92);
+        sphere(.275, 0xffffff, 0, .402, .088, head, 14, headwear).scale.set(1.08, .115, .92);
+      } else {
+        sphere(.317, 0xffffff, 0, .248, -.091, head, 15, headwear).scale.set(1.02, .96, .78);
+        sphere(.196, 0xffffff, -.115, .42, .086, head, 12, headwear).scale.set(1.16, .43, .82);
+        sphere(.134, 0xffffff, .145, .422, .075, head, 12, headwear).scale.set(1, .52, .87);
       }
-      const legs = [];
-      for (const side of [-1, 1]) legs.push(box(.2, .53, .23, 0x626c7a, side * .18, .26, 0, root));
-      const npc = { mesh: root, torso: torso, head: head, arms: arms, legs: legs, x: x, z: z, route: options.route || null, routeIndex: 0, walk: Math.random() * 6, data: options.data || null, label: options.label || 'Şehir sakini', icon: options.icon || '🙂', idle: Math.random() * 6, moving: false };
+      const arms = [], legs = [];
+      for (const side of [-1, 1]) {
+        if (palette.headwear !== 'scarf') {
+          sphere(.068, 0xffffff, side * .302, .178, 0, head, 9, skin).scale.set(.64, 1, .8);
+        }
+        const arm = group(side * .27, .53, 0, upper);
+        sphere(.117, 0xffffff, 0, -.154, 0, arm, 10, sleeve).scale.set(.92, 2.03, .95);
+        sphere(.083, 0xffffff, 0, -.363, .016, arm, 10, skin).scale.set(1, 1.1, .88);
+        arms.push(arm);
+        const leg = group(side * .135, .566, 0, root);
+        sphere(.123, 0x5f6f7a, 0, -.197, 0, leg, 10).scale.set(.87, 2.2, .88);
+        sphere(.13, 0x574e4a, 0, -.46, .072, leg, 11).scale.set(.94, .74, 1.46);
+        legs.push(leg);
+      }
+      root.rotation.y = options.facing ?? .15;
+      const npc = {
+        mesh: root, upper, head, arms, legs, faces, faceMaterial, palette, facing: root.rotation.y,
+        route: options.route || null, routeIndex: 0, walk: 0, gait: 0,
+        pause: 0, blockedTime: 0, idle: Math.random() * 6,
+        data: options.data, label: options.label
+      };
       people.push(npc); return npc;
     }
-    const guide = makePerson(-10.5, 10.2, { shirt: 0x619481, scarf: 0xe8bc66, label: 'Rehber Zeynep', icon: '🧕🏻', data: 'guide' });
-    makePerson(14.4, -7.3, { shirt: 0x9a684f, hat: 0x6a5140, route: [[14.4, -7.3], [16, -8.2], [17.5, -6.8], [15.9, -5.8]], label: 'Gezgin', icon: '🧔🏻' });
-    makePerson(2.4, -11.2, { shirt: 0x688eae, scarf: 0xd8a06a, label: 'Öğrenci Mina', icon: '👧🏻', data: 'student' });
-    makePerson(-4.5, 10.7, { shirt: 0x9d7aa4, route: [[-4.5, 10.7], [-2.4, 11.7], [-3.4, 13], [-5.2, 12.3]], label: 'Gezgin', icon: '👩🏻' });
-    makePerson(5.4, 11.7, { shirt: 0x728c68, hat: 0xb18455, route: [[5.4, 11.7], [7.3, 10.3], [6.5, 8.7], [4.7, 9.6]], label: 'Gezgin', icon: '🧑🏻' });
+    makePerson(-10.5, 10.2, { look: 'Zeynep', label: 'Rehber Zeynep', data: 'guide', facing: -.4 });
+    makePerson(14.4, -7.3, { look: 'Hasan', route: [[14.4, -7.3], [16, -8.2], [17.5, -6.8], [15.9, -5.8]], label: 'Gezgin Hasan', data: 'neighbor' });
+    makePerson(2.4, -11.2, { look: 'Mina', label: 'Öğrenci Mina', data: 'student' });
+    makePerson(-4.5, 10.7, { look: 'Elif', route: [[-4.5, 10.7], [-2.4, 11.7], [-3.4, 13], [-5.2, 12.3]], label: 'Gezgin Elif', data: 'neighbor' });
+    makePerson(5.4, 11.7, { look: 'Ali', route: [[5.4, 11.7], [7.3, 10.3], [6.5, 9.8], [4.7, 9.6]], label: 'Gezgin Ali', data: 'neighbor' });
     // A friendly vendor stays behind the copper stall counter; the collision is the stall itself.
-    makePerson(18, -1.25, { shirt: 0x805d49, hat: 0xc69c5b, label: 'Bakır ustası İsmail', icon: '🧔🏻', data: 'artisan' });
+    makePerson(18, -1.25, { look: 'İsmail', label: 'Bakır ustası İsmail', data: 'artisan' });
 
     // Three glowing tokens sit on the actual walkable promenade.
-    const tokenCoords = [[-8.9, 7], [8.7, 7.5], [0, -12.5]];
-    tokenCoords.forEach((p, i) => {
-      if (progress.tokens.indexOf(i) >= 0) return;
-      const g = group(p[0], 0, p[1]);
-      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(.3, 0), mat(0xffd45f)); gem.position.y = .95; add(gem, g);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(.48, .055, 6, 18), mat(0xffefaa)); ring.position.y = .95; add(ring, g);
-      sparkles.push({ id: i, x: p[0], z: p[1], mesh: g });
-    });
-    $('#collect-count').textContent = progress.tokens.length;
-    if (progress.guide) $('#quest-text').textContent = 'Kıyıdaki 3 hatırayı bul';
+    const dustTexture = makeDustTexture();
+    const dustMaterial = new THREE.PointsMaterial({ color: 0xffd65e, size: .22, map: dustTexture, transparent: true, opacity: .92, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true });
+    const dustGeometry = makeDustGeometry(24);
+    function questModel(id, parent) {
+      const g = group(0, .94, 0, parent);
+      if (id === 0) {
+        // A tiny hand-painted bird figurine.
+        const body = sphere(.28, 0x42a59a, 0, 0, 0, g, 7); body.scale.set(1.1, .78, .72);
+        const head = sphere(.17, 0x56b8a7, .2, .16, 0, g, 7);
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(.08, .2, 5), mat(0xe6a84f)); beak.rotation.z = -Math.PI / 2; beak.position.set(.4, .17, 0); add(beak, g, false);
+        const wing = sphere(.14, 0xf0c968, -.04, .04, .19, g, 6); wing.scale.set(.88, .55, .32);
+        sphere(.035, 0x473c32, .25, .19, .145, g, 6);
+      } else if (id === 1) {
+        // A low-poly copper water jug with a real handle and spout.
+        cylinder(.27, .34, .42, 0xb97843, 0, 0, 0, g, 9, copperMat);
+        cylinder(.14, .19, .12, 0xc58d52, 0, .25, 0, g, 9, copperMat);
+        cylinder(.09, .09, .17, 0xb97843, 0, .38, 0, g, 8, copperMat);
+        const handle = new THREE.Mesh(new THREE.TorusGeometry(.19, .045, 6, 12, Math.PI * 1.55), copperMat);
+        handle.position.set(-.24, .08, 0); handle.rotation.z = Math.PI / 2; add(handle, g, false);
+        const spout = cylinder(.07, .11, .19, 0xc58d52, .24, .11, 0, g, 7, copperMat); spout.rotation.z = -Math.PI / 3;
+      } else {
+        // A colorful raised ceramic tile, decorated with a 3D star.
+        const tile = box(.55, .12, .55, 0x318f9a, 0, 0, 0, g); tile.rotation.y = Math.PI / 4;
+        const inset = box(.4, .025, .4, 0xf0d69b, 0, .075, 0, g); inset.rotation.y = Math.PI / 4;
+        const star = new THREE.Mesh(new THREE.OctahedronGeometry(.23, 0), mat(0xd96f54)); star.position.y = .21; add(star, g, false);
+        for (let i = 0; i < 4; i++) { const dot = sphere(.045, 0x4d9c76, Math.cos(i * Math.PI / 2) * .21, .11, Math.sin(i * Math.PI / 2) * .21, g, 6); }
+      }
+      return g;
+    }
+    function workshopTool(id, parent) {
+      const tool = group(0, .98, 0, parent);
+      if (id === 0) {
+        cylinder(.055, .07, .58, 0xffffff, 0, -.03, 0, tool, 8, woodMat);
+        const head = cylinder(.145, .145, .42, 0xffffff, 0, .25, 0, tool, 8, woodMat);
+        head.rotation.z = Math.PI / 2;
+      } else if (id === 1) {
+        box(.54, .15, .42, 0xffffff, 0, 0, 0, tool, woodMat);
+        const stamp = box(.24, .08, .24, 0x5e887d, 0, .1, 0, tool);
+        stamp.rotation.y = Math.PI / 4;
+        box(.34, .045, .065, 0xdeb478, 0, .157, 0, tool);
+        box(.065, .045, .3, 0xdeb478, 0, .158, 0, tool);
+      } else {
+        cylinder(.045, .032, .54, 0x639587, 0, -.1, 0, tool, 8);
+        cylinder(.093, .045, .13, 0xffffff, 0, .22, 0, tool, 8, copperMat);
+        const bristles = sphere(.12, 0x9b5538, 0, .35, 0, tool, 8);
+        bristles.scale.set(.64, 1.28, .58);
+      }
+      tool.rotation.z = -.35;
+    }
+    const tokenRing = new THREE.TorusGeometry(.5, .04, 6, 18);
+    function placeTokens() {
+      map.spots.forEach(([x, z], id) => {
+        if (progress.tokens.includes(id)) return;
+        const marker = group(x, 0, z);
+        if (mapIndex === 0) questModel(id, marker);
+        else workshopTool(id, marker);
+        const ring = new THREE.Mesh(tokenRing, mat(0xffdf91));
+        ring.position.y = .94; add(ring, marker, false);
+        const dust = new THREE.Points(dustGeometry, dustMaterial);
+        dust.position.y = .42; dust.userData.phase = id * 1.9; add(dust, marker, false);
+        sparkles.push({ id, x, z, mesh: marker, dust });
+      });
+    }
+    placeTokens();
+
+    function buildWorkshopMap() {
+      const courtyard = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), floorMat);
+      courtyard.rotation.x = -Math.PI / 2;
+      courtyard.position.y = -.07; courtyard.receiveShadow = true;
+      world.add(courtyard);
+      for (const side of [-1, 1]) {
+        stoneWall(0, 1.05, side * 17.8, 36, 2.1, .5, 0, true);
+        stoneWall(side * 17.8, 1.05, 0, .5, 2.1, 36, 2, true);
+        courtyardHouse(side * 11.7, -12.5, 7, 5.8, side === -1 ? 1 : 2, 1);
+        stall(side * 11.1, -1, side === -1 ? 0xbf7755 : 0x5b8d86, side === -1 ? 'copper' : 'textile');
+        grassPatch(side * 13.5, 10, 2.4);
+        bench(side * 9.2, 12.2, 0);
+        flowerPot(side * 4.3, 6.6, [0x748e62, 0xc47b68, 0xddae71]);
+        for (const z of [4.6, 13.6]) lantern(side * 6.6, z);
+      }
+      cylinder(2.15, 2.25, .55, 0xc0aa89, 0, .28, 0, world, 24, stoneMats[0]);
+      const basin = new THREE.Mesh(new THREE.CircleGeometry(1.94, 28), waterMat);
+      basin.rotation.x = -Math.PI / 2; basin.position.y = .565; add(basin, world, false);
+      cylinder(.2, .33, .85, 0xcab696, 0, .87, 0, world, 10, stoneMats[1]);
+      cylinder(.7, .48, .18, 0xcab696, 0, 1.34, 0, world, 14, stoneMats[0]);
+      obstacleCircle(0, 0, 2.17);
+      makePerson(.85, 9.3, { look: 'Derya', label: 'Usta Derya', data: 'workshop', facing: -.12 });
+      makePerson(6, 7.8, { look: 'Deniz', label: 'Çırak Deniz', data: 'apprentice',
+        route: [[6, 7.8], [8, 8.4], [7.8, 10.5], [5.5, 10.6]] });
+      placeTokens();
+    }
 
     // Dialogue lines distinguish documented facts from local oral tradition.
     const stories = {
       guide: {
         name: 'Rehber Zeynep', icon: '🧕🏻', mission: true,
-        pages: [
-          'Hoş geldin! Burası Halilürrahman Gölü; pek çok kişi ona Balıklıgöl der. Şanlıurfa’nın Eyyübiye ilçesinde, şehir merkezinin güneybatısındayız.',
-          'Kuzey kıyısındaki Rızvaniye Camii ve medresesi, göl çevresindeki tarihî yapı topluluğunun parçası. Rızvaniye Camii 1736 yılında yaptırılmış.',
-          'Burada Hz. İbrahim ve ateşin göle dönüşmesiyle ilgili bir anlatı da paylaşılır. Bu, tarihî bir kayıt değil; bölgenin inanç ve sözlü anlatı geleneğidir.',
-          'Şimdi göl kıyısındaki üç parıltılı hatırayı bul. Balıklara bakabilir, taş yolu ve avluları keşfedebilirsin. Balıkları rahat bırakmayı unutma!'
+        cues: ['Gölün adını keşfedelim', 'Kıyıdaki tarihi yapılar', 'Bir efsanenin izinde', 'Kaşif görevin hazır!'], pages: [
+          'Hoş geldin minik kaşif! Burası Urfa’nın taş avlularından, serin su yollarından ve yemyeşil bahçelerinden ilham alan hayalî bir keşif köşesi.',
+          'Etrafına bak: taş kemerler, kubbeli çatılar ve gölgeli yürüyüş yolları bize bu bölgenin mimari dilini hatırlatıyor. Her sokakta başka bir ayrıntı saklı!',
+          'Buradaki dükkânlarda bakır, renkli seramikler ve kuş figürleri gibi el işi süsler bulabilirsin. Her birinin yapımında sabır ve ustalık var.',
+          'Üç el yapımı hatıra kaybolmuş! Bahçede onları bulabilir misin? Biri kuş, biri bakır ibrik, biri de renkli bir çini. Keşfe hazır mısın?'
         ]
       },
       artisan: {
-        name: 'Bakır ustası İsmail', icon: '🧔🏻', pages: [
-          'Selam küçük gezgin! Urfa çarşılarında bakır işçiliği uzun zamandır yaşatılan zanaatlardan biridir.',
-          'Bakır levhaya çekiçle küçük küçük vurarak desen verilir. Her ustanın eli ve deseni biraz farklı olur.'
+        name: 'Bakır ustası İsmail', icon: '🧔🏻', cues: ['Çekiç sesini duydun mu?', 'Ustanın küçük sırrı'], pages: [
+          'Hoş geldin çırak! Şu bakır levhayı görüyor musun? Urfa çarşılarında bakır işçiliği kuşaklar boyunca ustadan çırağa aktarılmış.',
+          'Deseni oluşturmak için levhaya sabırla küçük vuruşlar yaparım. Sence önce dalga mı çizelim, yoksa minik bir balık mı? Her eserin kendine özgü bir hikâyesi olur!'
         ]
       },
       student: {
-        name: 'Öğrenci Mina', icon: '👧🏻', pages: [
-          'Merhaba! Göl çevresinde Halilürrahman ve Aynzeliha gölleriyle tarihî yapılar bir arada bulunuyor.',
-          'Kıyıdaki taşları ve eski duvarları dikkatle incele. Her biri bu alanın uzun geçmişinden bir iz taşıyor.'
+        name: 'Öğrenci Mina', icon: '👧🏻', cues: ['Ben de merak ediyordum!', 'Minik gözlem görevi'], pages: [
+          'Selam! Ben Mina. Göl kıyısında yüzen balıkları saymaya çalıştım ama onlar o kadar çevik ki saymayı şaşırdım!',
+          'Halilürrahman ve Aynzeliha gölleriyle tarihî yapılar bu çevrede bir arada. Taş duvarlarda farklı renkler bulabilir misin? Bana en sevdiğini sonra anlat!'
+        ]
+      },
+      neighbor: {
+        name: 'Göl kıyısından bir dost', icon: '🙂', cues: ['Şehrin en güzel sesi', 'Kaşiflere küçük bir öneri'], pages: [
+          'Sence gölün sesi nasıl? Ben biraz sessiz kalıp suyu dinlemeyi seviyorum. Kuşlar, su ve çarşıdan gelen sesler koca bir şehir hikâyesi anlatıyor.',
+          'Balıklara uzaktan bakmak en güzeli. Sonra taş yolu takip et; belki ışıl ışıl bir hatıra taşı bulursun!'
+        ]
+      },
+      workshop: {
+        name: 'Usta Derya', icon: '🧑🏻', mission: true,
+        cues: ['Atölyeye hoş geldin', 'Üç alet, üç iş'], pages: [
+          'Avludaki ustalar bugün küçük bir sergi hazırlıyor. Tahta, bakır ve boyayla yaptığımız işleri bir araya getireceğiz.',
+          'Hazırlığa yardım eder misin? Ahşap tokmağı, desen kalıbını ve boyama fırçasını ara. Her biri avlunun farklı bir köşesinde.'
+        ]
+      },
+      apprentice: {
+        name: 'Çırak Deniz', icon: '🙂', cues: ['Küçük bir ipucu'], pages: [
+          'Ben renkleri hazırladım. En son kuzeydeki iki atölyenin arasından geçtim. Gözün oradaki parıltılara takılabilir!'
         ]
       }
     };
-    let dialogStory = null, dialogPage = 0;
-    function openDialogue(story) {
-      if (!story) { toast('Yakındaki kişiyle E tuşuna basarak konuş.'); return; }
-      if (!story.pages) story = stories[story.data];
+    let dialogNpc = null, dialogStory = null, dialogPage = 0, dialogReadTimer = 0, dialogSecondsLeft = 0, dialogGesture = 0;
+    function openDialogue(npc) {
+      const story = stories[npc.data];
       if (!story) return;
-      dialogStory = story; dialogPage = 0; isTalking = true;
+      dialogNpc = npc; dialogStory = story; dialogPage = 0; isTalking = true;
       if (document.pointerLockElement) document.exitPointerLock();
-      $('#speaker-name').textContent = story.name;
-      $('#speaker-icon').textContent = story.icon;
+      $('#speaker-name').textContent = npc.label;
+      npc.portrait ??= makeNpcPortrait(npc.palette);
+      $('#speaker-icon').replaceChildren(npc.portrait);
+      $('#dialog-card').classList.toggle('mission-dialog', !!story.mission);
       showDialoguePage();
       $('#dialog').classList.remove('hidden');
     }
     function showDialoguePage() {
+      clearInterval(dialogReadTimer);
+      dialogGesture = 0;
       const p = dialogStory.pages[dialogPage];
       $('#dialog-text').textContent = p;
-      $('#dialog-progress').textContent = (dialogPage + 1) + ' / ' + dialogStory.pages.length;
-      $('#dialog-next').innerHTML = dialogPage + 1 < dialogStory.pages.length ? 'Devam <span>→</span>' : (dialogStory.mission ? 'Göreve başla <span>✦</span>' : 'Görüşürüz <span>→</span>');
+      $('#dialog-cue').textContent = dialogStory.cues && dialogStory.cues[dialogPage] || 'Birlikte keşfedelim!';
+      $('#dialog-progress').textContent = 'Hikâye ' + (dialogPage + 1) + ' / ' + dialogStory.pages.length;
+      $('#dialog-progress-bar').style.width = ((dialogPage + 1) / dialogStory.pages.length * 100) + '%';
+      const next = $('#dialog-next');
+      next.dataset.readyLabel = dialogPage + 1 < dialogStory.pages.length ? 'Devam <span>→</span>' : (dialogStory.mission && !progress.guide && !levelDone(mapIndex) ? 'Göreve başla <span>✦</span>' : 'Görüşürüz <span>→</span>');
+      next.disabled = true; next.innerHTML = 'Oku (3) <span>⌛</span>';
+      $('#dialog-tip').textContent = 'Bu hikâyeyi okumak için 3 saniyen var.';
+      dialogSecondsLeft = 3;
+      dialogReadTimer = window.setInterval(() => {
+        dialogSecondsLeft--;
+        if (dialogSecondsLeft <= 0) {
+          clearInterval(dialogReadTimer); dialogReadTimer = 0;
+          next.disabled = false; next.innerHTML = next.dataset.readyLabel;
+          $('#dialog-tip').textContent = 'Hazırsan Devam’a dokun veya E tuşuna bas.';
+        } else next.innerHTML = 'Oku (' + dialogSecondsLeft + ') <span>⌛</span>';
+      }, 1000);
     }
-    function closeDialogue() {
-      const completed = dialogStory && dialogStory.mission;
+    function closeDialogue(finished = false) {
+      clearInterval(dialogReadTimer); dialogReadTimer = 0;
+      const accepted = finished && dialogStory?.mission && !progress.guide;
+      dialogNpc = null; dialogStory = null;
       $('#dialog').classList.add('hidden'); isTalking = false;
-      if (completed) {
+      if (accepted) {
         progress.guide = true; saveProgress();
-        $('#quest-text').textContent = 'Kıyıdaki 3 hatırayı bul';
-        toast('Yeni görev: kıyıdaki üç parıltıyı bul!');
+        updateQuest();
+        if (!levelDone(mapIndex)) toast('Yeni görev: ' + map.objective);
       }
     }
     $('#dialog-next').addEventListener('click', () => {
-      if (!dialogStory) return;
+      if (!dialogStory || dialogSecondsLeft > 0) return;
+      dialogSecondsLeft = 0;
       if (dialogPage + 1 < dialogStory.pages.length) { dialogPage++; showDialoguePage(); }
-      else closeDialogue();
+      else closeDialogue(true);
     });
 
     function startAudio() {
@@ -425,36 +743,91 @@
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC || audio) return;
         audio = new AC();
+        if (audio.state === 'suspended') audio.resume();
+        masterGain = audio.createGain(); masterGain.gain.value = muted ? 0 : .72; masterGain.connect(audio.destination);
         const length = audio.sampleRate * 2, buffer = audio.createBuffer(1, length, audio.sampleRate), data = buffer.getChannelData(0);
         for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * .16;
+        stepBuffer = audio.createBuffer(1, Math.floor(audio.sampleRate * .09), audio.sampleRate);
+        const stepData = stepBuffer.getChannelData(0);
+        for (let i = 0; i < stepData.length; i++) stepData[i] = (Math.random() * 2 - 1) * (1 - i / stepData.length) * .55;
         const noise = audio.createBufferSource(); noise.buffer = buffer; noise.loop = true;
         const filter = audio.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 520;
         ambientGain = audio.createGain(); ambientGain.gain.value = .045;
-        noise.connect(filter); filter.connect(ambientGain); ambientGain.connect(audio.destination); noise.start();
-        birdTimer = window.setInterval(() => { if (!audio || muted) return; birdCall(); }, 7200);
+        noise.connect(filter); filter.connect(ambientGain); ambientGain.connect(masterGain); noise.start();
+        // Each stall has its own panner; the low-level filtered murmur fades as the player walks away.
+        for (const place of [[18, -3.5], [21, 1], [-19, 6.5]]) {
+          const source = audio.createBufferSource(); source.buffer = buffer; source.loop = true;
+          const voiceFilter = audio.createBiquadFilter(); voiceFilter.type = 'bandpass'; voiceFilter.frequency.value = 760; voiceFilter.Q.value = .65;
+          const voiceGain = audio.createGain(); voiceGain.gain.value = .042;
+          const panner = audio.createPanner(); panner.panningModel = 'HRTF'; panner.distanceModel = 'inverse'; panner.refDistance = 4; panner.maxDistance = 30; panner.rolloffFactor = .9;
+          setNodePosition(panner, place[0], 1.2, place[1]);
+          source.connect(voiceFilter); voiceFilter.connect(voiceGain); voiceGain.connect(panner); panner.connect(masterGain); source.start();
+          marketVoices.push({ panner: panner, gain: voiceGain, x: place[0], z: place[1] });
+        }
+        birdTimer = window.setInterval(() => { if (!active || !audio || muted) return; birdCall(); }, 7200);
         birdCall();
       } catch (e) { console.warn('Ortam sesi açılamadı', e); }
+    }
+    function setNodePosition(node, x, y, z) {
+      if (node.positionX) { node.positionX.value = x; node.positionY.value = y; node.positionZ.value = z; }
+      else if (node.setPosition) node.setPosition(x, y, z);
+    }
+    function updateListener() {
+      if (!audio || !audio.listener) return;
+      const l = audio.listener, fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+      if (l.positionX) {
+        l.positionX.value = player.x; l.positionY.value = player.eye; l.positionZ.value = player.z;
+        l.forwardX.value = fx; l.forwardY.value = 0; l.forwardZ.value = fz;
+        l.upX.value = 0; l.upY.value = 1; l.upZ.value = 0;
+      } else {
+        l.setPosition(player.x, player.eye, player.z); l.setOrientation(fx, 0, fz, 0, 1, 0);
+      }
+    }
+    function playFootstep(type) {
+      if (!audio || muted || !masterGain || !stepBuffer) return;
+      try {
+        const now = audio.currentTime, source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+        source.buffer = stepBuffer;
+        const settings = type === 'stone' ? { freq: 1050, end: 520, q: 1.1, vol: .12 } : type === 'grass' ? { freq: 430, end: 210, q: .55, vol: .07 } : { freq: 300, end: 125, q: .72, vol: .1 };
+        filter.type = 'bandpass'; filter.frequency.setValueAtTime(settings.freq, now); filter.frequency.exponentialRampToValueAtTime(settings.end, now + .075); filter.Q.value = settings.q;
+        gain.gain.setValueAtTime(.0001, now); gain.gain.exponentialRampToValueAtTime(settings.vol, now + .006); gain.gain.exponentialRampToValueAtTime(.0001, now + .085);
+        source.connect(filter); filter.connect(gain); gain.connect(masterGain); source.start(now);
+        const thud = audio.createOscillator(), thudGain = audio.createGain();
+        thud.type = 'triangle'; thud.frequency.setValueAtTime(settings.freq, now); thud.frequency.exponentialRampToValueAtTime(settings.end, now + .07);
+        thudGain.gain.setValueAtTime(.0001, now); thudGain.gain.exponentialRampToValueAtTime(settings.vol * .34, now + .004); thudGain.gain.exponentialRampToValueAtTime(.0001, now + .08);
+        thud.connect(thudGain); thudGain.connect(masterGain); thud.start(now); thud.stop(now + .09);
+      } catch (_) {}
     }
     function birdCall() {
       if (!audio || muted || audio.state === 'closed') return;
       const t = audio.currentTime, osc = audio.createOscillator(), gain = audio.createGain();
       osc.type = 'sine'; osc.frequency.setValueAtTime(1550, t); osc.frequency.exponentialRampToValueAtTime(2100, t + .09);
       osc.frequency.exponentialRampToValueAtTime(1300, t + .21); gain.gain.setValueAtTime(.0001, t); gain.gain.exponentialRampToValueAtTime(.025, t + .025);
-      gain.gain.exponentialRampToValueAtTime(.0001, t + .24); osc.connect(gain); gain.connect(audio.destination); osc.start(t); osc.stop(t + .25);
+      gain.gain.exponentialRampToValueAtTime(.0001, t + .24); osc.connect(gain); gain.connect(masterGain || audio.destination); osc.start(t); osc.stop(t + .25);
     }
     $('#sound').addEventListener('click', () => {
       muted = !muted; $('#sound').textContent = muted ? '🔇' : '🔊';
-      if (ambientGain) ambientGain.gain.setTargetAtTime(muted ? 0 : .045, audio.currentTime, .15);
+      if (masterGain && audio) masterGain.gain.setTargetAtTime(muted ? 0 : .72, audio.currentTime, .15);
     });
     function toast(text) {
       const el = $('#toast'); el.textContent = text; el.classList.remove('hidden');
       clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), 2400);
     }
-    function safeLoad() {
-      try { const s = JSON.parse(localStorage.getItem('urfa-balikligol-v2') || '{}'); return { guide: !!s.guide, tokens: Array.isArray(s.tokens) ? s.tokens.filter(x => x >= 0 && x < 3) : [] }; }
-      catch (_) { return { guide: false, tokens: [] }; }
+    function saveProgress() {
+      try { localStorage.setItem('urfa-kasifler-levels-v1', JSON.stringify(saved)); } catch (_) {}
     }
-    function saveProgress() { try { localStorage.setItem('urfa-balikligol-v2', JSON.stringify(progress)); } catch (_) {} }
+    function levelDone(index) {
+      return saved.levels[index].tokens.length === maps[index].items.length;
+    }
+    function levelUnlocked(index) {
+      return maps.slice(0, index).every((_, previous) => levelDone(previous));
+    }
+    function updateQuest() {
+      $('#level-name').textContent = map.name;
+      $('#collect-count').textContent = progress.tokens.length;
+      $('#collect-total').textContent = '/ ' + map.items.length;
+      $('#quest-text').textContent = levelDone(mapIndex) ? 'Bölüm tamamlandı!' : progress.guide ? map.objective : map.guide;
+    }
 
     function nearestPerson() {
       let best = null, bestD = 2.65;
@@ -472,34 +845,93 @@
     function interact() {
       if (!active || isTalking) return;
       const p = nearestPerson();
-      if (p) { if (p.data) openDialogue({ data: p.data }); else toast('Şehir sakinleri göl kıyısında geziniyor.'); return; }
+      if (p) { openDialogue(p); return; }
       const token = nearestToken();
       if (token) {
-        progress.tokens.push(token.id); saveProgress(); token.mesh.removeFromParent();
+        progress.tokens.push(token.id); saveProgress(); world.remove(token.mesh);
         sparkles.splice(sparkles.indexOf(token), 1);
-        $('#collect-count').textContent = progress.tokens.length;
-        toast('Göl kıyısından bir parıltı buldun! ✨');
-        if (progress.tokens.length >= 3) { $('#quest-text').textContent = 'Balıklıgöl keşfi tamamlandı!'; toast('Balıklıgöl keşfini tamamladın!'); }
+        updateQuest();
+        if (levelDone(mapIndex)) openLevelSelect(mapIndex);
+        else toast(map.items[token.id] + ' bulundu! ✨');
         return;
       }
       toast('Yakında konuşabileceğin biri ya da bir keşif yok.');
     }
     $('#touch-action').addEventListener('pointerdown', e => { e.preventDefault(); interact(); });
-    $('#home').addEventListener('click', () => {
-      active = false; isTalking = false; $('#dialog').classList.add('hidden'); $('#welcome').classList.remove('hidden');
-      $('#hud').classList.add('hidden'); $('#crosshair').classList.add('hidden');
-      $('#joystick').classList.add('hidden'); $('#touch-action').classList.add('hidden'); $('#look-hint').classList.add('hidden');
+    const gameControls = ['#hud', '#crosshair', '#joystick', '#touch-action', '#look-hint'];
+    function openLevelSelect(completed = null) {
+      active = false; looking = false;
+      closeDialogue();
+      player.vx = 0; player.vz = 0;
+      releaseStick();
+      for (const key in keys) keys[key] = false;
+      for (const selector of gameControls) $(selector).classList.add('hidden');
+      $('#interaction-hint').classList.add('hidden');
+      $('#toast').classList.add('hidden');
       if (document.pointerLockElement) document.exitPointerLock();
-    });
-    $('#start').addEventListener('click', () => {
-      active = true; $('#welcome').classList.add('hidden'); $('#hud').classList.remove('hidden');
-      $('#crosshair').classList.remove('hidden'); $('#joystick').classList.remove('hidden'); $('#touch-action').classList.remove('hidden');
-      $('#look-hint').classList.remove('hidden'); startAudio(); canvas.requestPointerLock && canvas.requestPointerLock();
-      toast(progress.guide ? 'Göl kıyısındaki hatıraları ara.' : 'Göl kıyısındaki rehber Zeynep’i bul.');
+      if (audio) for (const voice of marketVoices) voice.gain.gain.setTargetAtTime(0, audio.currentTime, .2);
+      const next = completed !== null && completed + 1 < maps.length ? completed + 1 : null;
+      $('#level-message').textContent = completed === null ? 'Keşfetmek istediğin bölümü seç.' :
+        next === null ? 'Tebrikler! Bütün bölümleri tamamladın.' :
+          maps[completed].name + ' tamamlandı. ' + maps[next].name + ' açıldı!';
+      const list = $('#level-options');
+      list.replaceChildren();
+      maps.forEach((entry, index) => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'level-option';
+        button.disabled = !levelUnlocked(index);
+        const badge = document.createElement('span');
+        badge.className = 'level-number'; badge.textContent = String(index + 1).padStart(2, '0');
+        const title = document.createElement('strong');
+        title.textContent = entry.name;
+        const description = document.createElement('span');
+        description.className = 'level-description'; description.textContent = entry.description;
+        const status = document.createElement('span');
+        status.className = 'level-status';
+        status.textContent = button.disabled ? 'Önce ' + maps[index - 1].name + ' bölümünü bitir' :
+          levelDone(index) ? 'Tamamlandı · Yeniden gez' : index === next ? 'Sonraki bölüme geç →' : 'Keşfe başla →';
+        button.append(badge, title, description, status);
+        button.addEventListener('click', () => enterMap(index));
+        list.append(button);
+      });
+      $('#welcome').classList.add('hidden');
+      $('#level-select').classList.remove('hidden');
+      (list.children[next ?? mapIndex] || list.querySelector('button')).focus();
+    }
+    function enterMap(index) {
+      if (!levelUnlocked(index)) return;
+      if (index !== mapIndex) {
+        useMap(index);
+        progress = saved.levels[index];
+        if (index === 1 && world.children.length === 0) buildWorkshopMap();
+        [player.x, player.z, player.yaw] = map.spawn;
+        targetYaw = player.yaw;
+        targetPitch = player.pitch = -.01;
+        player.bob = 0;
+        camera.position.set(player.x, player.eye, player.z);
+        camera.rotation.set(player.pitch, player.yaw, 0);
+      }
+      updateQuest();
+      active = true;
+      $('#level-select').classList.add('hidden');
+      for (const selector of gameControls) $(selector).classList.remove('hidden');
+      startAudio();
+      if (!mobile) lockPointer();
+      toast(levelDone(index) ? 'Bölümü yeniden keşfedebilirsin.' : progress.guide ? map.objective : map.guide);
+    }
+    function lockPointer() {
+      if (canvas.requestPointerLock) canvas.requestPointerLock()?.catch(() => {});
+    }
+    $('#home').addEventListener('click', () => openLevelSelect());
+    $('#start').addEventListener('click', () => openLevelSelect());
+    $('#level-back').addEventListener('click', () => {
+      $('#level-select').classList.add('hidden');
+      $('#welcome').classList.remove('hidden');
+      $('#start').focus();
     });
     document.addEventListener('pointerlockchange', () => { isLocked = document.pointerLockElement === canvas; if (!isLocked) looking = false; });
     document.addEventListener('pointerlockerror', () => { isLocked = false; });
-    canvas.addEventListener('click', () => { if (active && !isTalking && !isLocked && canvas.requestPointerLock) canvas.requestPointerLock(); });
+    canvas.addEventListener('click', () => { if (active && !isTalking && !isLocked) lockPointer(); });
     document.addEventListener('mousemove', e => {
       if (!active || isTalking) return;
       if (isLocked) {
@@ -523,6 +955,7 @@
     canvas.addEventListener('pointerup', endLook); canvas.addEventListener('pointercancel', endLook);
 
     window.addEventListener('keydown', e => {
+      if (!active) return;
       if (e.repeat && (e.code === 'KeyE' || e.code === 'Space')) return;
       keys[e.code] = true;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -548,9 +981,8 @@
     stick.addEventListener('pointerup', releaseStick); stick.addEventListener('pointercancel', releaseStick);
 
     // Circle-vs-box collision with axis-separated motion slides naturally along walls.
-    const WORLD_LIMIT = 27.4;
     function blocked(x, z, ignorePerson) {
-      if (x < -WORLD_LIMIT || x > WORLD_LIMIT || z < -WORLD_LIMIT || z > WORLD_LIMIT) return true;
+      if (Math.abs(x) > map.limit || Math.abs(z) > map.limit) return true;
       for (const s of solids) {
         if (s.type === 'box') {
           const cx = Math.max(s.minX, Math.min(x, s.maxX)), cz = Math.max(s.minZ, Math.min(z, s.maxZ));
@@ -559,7 +991,7 @@
         } else if (Math.hypot(x - s.x, z - s.z) < player.radius + s.r) return true;
       }
       // The water basin is a continuous no-walk surface; its stone rim remains reachable.
-      if (Math.hypot(x, z) < 8.18 + player.radius) return true;
+      if (mapIndex === 0 && Math.hypot(x, z) < 8.18 + player.radius) return true;
       for (const p of people) {
         if (p === ignorePerson) continue;
         if (Math.hypot(x - p.mesh.position.x, z - p.mesh.position.z) < player.radius + .36) return true;
@@ -574,6 +1006,13 @@
         if (!blocked(player.x, player.z + sz)) player.z += sz;
       }
     }
+    function groundType(x, z) {
+      const r = Math.hypot(x, z);
+      if (mapIndex === 0 && r >= 8.35 && r <= 14.05) return 'stone';
+      for (const patch of grassZones) if (Math.hypot(x - patch.x, z - patch.z) <= patch.r) return 'grass';
+      for (const patch of soilZones) if (Math.hypot(x - patch.x, z - patch.z) <= patch.r) return 'soil';
+      return 'stone';
+    }
 
     function resize() {
       camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -586,13 +1025,12 @@
       const dt = Math.min(.035, (now - last) / 1000 || 0); last = now;
       waterTexture.offset.x = (now * .000012) % 1;
       waterTexture.offset.y = (now * .000008) % 1;
-      for (const f of fish) {
-        f.mesh.position.x = f.x + Math.cos(now * .00038 + f.phase) * .9;
-        f.mesh.position.z = f.z + Math.sin(now * .00032 + f.phase) * .7;
-        f.mesh.rotation.y = Math.sin(now * .00025 + f.phase) * .35;
+      if (mapIndex === 0) animateLake(now);
+      for (const token of sparkles) {
+        token.mesh.rotation.y = now * .00065; token.mesh.position.y = Math.sin(now * .002 + token.id) * .12;
+        token.dust.rotation.y = -now * .0009; token.dust.position.y = .42 + Math.sin(now * .0022 + token.dust.userData.phase) * .09;
       }
-      ripples.forEach((r, i) => { const s = .8 + (Math.sin(now * .001 + i) + 1) * .12; r.scale.set(s, s, s); });
-      for (const token of sparkles) { token.mesh.rotation.y = now * .00065; token.mesh.position.y = Math.sin(now * .002 + token.id) * .12; }
+      if (isTalking) dialogGesture += dt;
       for (const p of people) animatePerson(p, dt);
       if (active && !isTalking) {
         let forward = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
@@ -608,12 +1046,25 @@
         if (mag < .01) { player.vx *= Math.exp(-12 * dt); player.vz *= Math.exp(-12 * dt); }
         movePlayer(player.vx * dt, player.vz * dt);
         const moving = Math.hypot(player.vx, player.vz) > .25;
+        if (moving) {
+          footstepClock += dt;
+          if (footstepClock >= .43) { footstepClock = 0; playFootstep(groundType(player.x, player.z)); }
+        } else footstepClock = Math.min(footstepClock, .12);
         player.bob += dt * (moving ? 9 : 2);
         const yawDelta = Math.atan2(Math.sin(targetYaw - player.yaw), Math.cos(targetYaw - player.yaw));
         player.yaw += yawDelta * (1 - Math.exp(-16 * dt));
         player.pitch += (targetPitch - player.pitch) * (1 - Math.exp(-14 * dt));
         camera.position.set(player.x, player.eye + (moving ? Math.sin(player.bob) * .045 : 0), player.z);
         camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+        marketUpdateTimer += dt;
+        if (marketUpdateTimer >= .12) {
+          marketUpdateTimer = 0; updateListener();
+          if (audio && !muted) for (const voice of marketVoices) {
+            const distance = Math.hypot(player.x - voice.x, player.z - voice.z);
+            const volume = mapIndex === 0 ? .034 * Math.max(.12, 1 - distance / 38) : 0;
+            voice.gain.gain.setTargetAtTime(volume, audio.currentTime, .22);
+          }
+        }
         nearby = nearestPerson();
         const token = nearby ? null : nearestToken();
         const canTalk = !!nearby, canCollect = !!token;
@@ -626,59 +1077,286 @@
     }
     requestAnimationFrame(frame);
 
+    function animateLake(now) {
+      for (const f of fish) {
+        f.mesh.position.x = f.x + Math.cos(now * .00038 + f.phase) * .9;
+        f.mesh.position.z = f.z + Math.sin(now * .00032 + f.phase) * .7;
+        f.mesh.rotation.y = Math.sin(now * .00025 + f.phase) * .35;
+      }
+      fishRipples.forEach((r, i) => {
+        const f = fish[r.fish], pulse = .72 + (Math.sin(now * .003 + r.phase + i) + 1) * .3;
+        r.mesh.position.set(f.mesh.position.x, .39 + i * .0005, f.mesh.position.z);
+        r.mesh.scale.setScalar(pulse);
+        r.mesh.material.opacity = .16 + (Math.sin(now * .002 + r.phase) + 1) * .11;
+      });
+      ripples.forEach((r, i) => r.scale.setScalar(.8 + (Math.sin(now * .001 + i) + 1) * .12));
+      for (const gull of gulls) {
+        const t = now * .00012 + gull.phase;
+        gull.mesh.position.set(gull.x + Math.cos(t) * 8.5, 8.5 + Math.sin(now * .0011 + gull.phase) * .48, gull.z + Math.sin(t) * 7.5);
+        gull.mesh.rotation.y = -t + Math.PI / 2;
+        const flap = Math.sin(now * .012 + gull.phase) * .46;
+        gull.wings.forEach(w => { w.hinge.rotation.z = flap * w.side; });
+      }
+    }
+
+    function angleDifference(from, to) {
+      return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+    }
+
     function animatePerson(p, dt) {
+      const { position, rotation } = p.mesh;
+      const toPlayerX = player.x - position.x, toPlayerZ = player.z - position.z;
+      const playerDistance = Math.hypot(toPlayerX, toPlayerZ);
+      const chatting = p === dialogNpc;
+      const noticePlayer = active && playerDistance < 3.4;
+      const playerDirection = Math.atan2(toPlayerX, toPlayerZ);
+      let traveled = 0;
       p.idle += dt;
-      if (p.route) {
-        const target = p.route[p.routeIndex], dx = target[0] - p.mesh.position.x, dz = target[1] - p.mesh.position.z, d = Math.hypot(dx, dz);
-        if (d < .22) p.routeIndex = (p.routeIndex + 1) % p.route.length;
-        else {
-          p.moving = true; const step = Math.min(d, dt * .6);
-          const nx = p.mesh.position.x + dx / d * step, nz = p.mesh.position.z + dz / d * step;
-          if (!blocked(nx, nz, p)) { p.mesh.position.x = nx; p.mesh.position.z = nz; p.x = nx; p.z = nz; p.mesh.rotation.y = Math.atan2(dx, dz); }
-          p.walk += dt * 7;
+      p.pause = Math.max(0, p.pause - dt);
+      if (active && p.route && !chatting && playerDistance > 1.45 && p.pause === 0) {
+        const [x, z] = p.route[p.routeIndex];
+        const dx = x - position.x, dz = z - position.z, distance = Math.hypot(dx, dz);
+        if (distance > .17) {
+          p.facing = Math.atan2(dx, dz);
+          const step = Math.min(distance, dt * .95);
+          const nx = position.x + dx / distance * step, nz = position.z + dz / distance * step;
+          if (!blocked(nx, nz, p) && Math.hypot(nx - player.x, nz - player.z) >= 1.35) {
+            position.x = nx; position.z = nz;
+            traveled = step; p.blockedTime = 0;
+          } else p.blockedTime += dt;
+        }
+        if (distance <= .17 || p.blockedTime > .8) {
+          p.routeIndex = (p.routeIndex + 1) % p.route.length;
+          p.pause = distance <= .17 ? .48 : .24;
+          p.blockedTime = 0;
         }
       }
-      p.legs[0].rotation.x = p.moving ? Math.sin(p.walk) * .38 : 0;
-      p.legs[1].rotation.x = p.moving ? -Math.sin(p.walk) * .38 : 0;
-      p.arms[0].rotation.x = p.moving ? -Math.sin(p.walk) * .25 : Math.sin(p.idle * 1.5) * .035;
-      p.arms[1].rotation.x = p.moving ? Math.sin(p.walk) * .25 : -Math.sin(p.idle * 1.5) * .035;
-      p.moving = false;
+      const ease = 1 - Math.exp(-8 * dt);
+      const facePlayer = chatting || (noticePlayer && traveled === 0);
+      rotation.y += angleDifference(rotation.y, facePlayer ? playerDirection : p.facing) * ease;
+      const glance = noticePlayer ? THREE.MathUtils.clamp(angleDifference(rotation.y, playerDirection), -.55, .55) : .14 * Math.sin(p.idle * .77);
+      const gesture = chatting ? Math.sin(Math.PI * Math.min(dialogGesture / .92, 1)) : 0;
+      p.head.rotation.y += (glance - p.head.rotation.y) * ease;
+      p.head.rotation.x += (.04 * Math.sin(p.idle * 1.65) + gesture * .11 - p.head.rotation.x) * ease;
+      p.head.rotation.z = .035 * Math.sin(p.idle * 1.2);
+      p.faceMaterial.map = p.faces[p.idle % 4.7 < .105 ? 1 : 0];
+      p.walk = (p.walk + traveled * 8.4) % (Math.PI * 2);
+      p.gait += ((traveled > 0 ? 1 : 0) - p.gait) * ease;
+      const swing = Math.sin(p.walk) * p.gait;
+      p.upper.position.y = .6 + .019 * Math.abs(swing) + .008 * Math.sin(p.idle * 2);
+      p.upper.rotation.z = .038 * swing + .018 * Math.sin(p.idle * 1.4);
+      p.legs[0].rotation.x = swing * .46;
+      p.legs[1].rotation.x = -swing * .46;
+      p.arms[0].rotation.x = -swing * .31 + .028 * Math.sin(p.idle * 1.4);
+      p.arms[1].rotation.x = swing * .31 - gesture * .55;
+      p.arms[0].rotation.z = -.12;
+      p.arms[1].rotation.z = .12 + gesture * .18;
     }
+  }
+
+  function makeDustTexture() {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const ctx = c.getContext('2d'), grad = ctx.createRadialGradient(32, 32, 1, 32, 32, 31);
+    grad.addColorStop(0, 'rgba(255,255,220,1)'); grad.addColorStop(.22, 'rgba(255,231,133,.95)');
+    grad.addColorStop(.58, 'rgba(255,194,54,.45)'); grad.addColorStop(1, 'rgba(255,174,30,0)');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; return tex;
+  }
+
+  function makeDustGeometry(count) {
+    const positions = [];
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2, radius = .28 + Math.random() * .52;
+      positions.push(Math.cos(angle) * radius, .12 + Math.random() * 1.3, Math.sin(angle) * radius);
+    }
+    const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); return geometry;
+  }
+
+  function npcEllipse(ctx, color, x, y, rx, ry, angle = 0) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function paintNpcExpression(ctx, closed) {
+    ctx.lineCap = 'round';
+    for (const side of [-1, 1]) {
+      const x = side * 28;
+      const blush = ctx.createRadialGradient(side * 43, 10, 1, side * 43, 10, 17);
+      blush.addColorStop(0, 'rgba(201,99,93,.42)');
+      blush.addColorStop(1, 'rgba(201,99,93,0)');
+      npcEllipse(ctx, blush, side * 43, 10, 17, 11, side * -.15);
+
+      ctx.strokeStyle = 'rgba(85,48,40,.58)';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(x - 8, -23);
+      ctx.quadraticCurveTo(x, -27, x + 8, -22);
+      ctx.stroke();
+
+      if (closed) {
+        ctx.strokeStyle = '#4f3531';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 6, -5);
+        ctx.quadraticCurveTo(x, -1, x + 6, -5);
+        ctx.stroke();
+      } else {
+        npcEllipse(ctx, '#493431', x, -8, 6.1, 8.4, side * -.11);
+        npcEllipse(ctx, '#fff0d9', x - 1.9, -11, 1.5, 1.7);
+      }
+    }
+
+    npcEllipse(ctx, 'rgba(155,76,60,.19)', 0, 5, 4.3, 2.3);
+    ctx.strokeStyle = '#824d45';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-12, 17);
+    ctx.quadraticCurveTo(0, 26, 12, 16);
+    ctx.stroke();
+  }
+
+  function makeNpcFace(palette, closed) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = palette.skin;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // The sphere's front faces +Z at u = .25.
+    ctx.translate(64, 64);
+    ctx.scale(.5, .5);
+    const light = ctx.createRadialGradient(-9, -28, 3, -9, -28, 73);
+    light.addColorStop(0, 'rgba(255,218,171,.32)');
+    light.addColorStop(1, 'rgba(255,218,171,0)');
+    npcEllipse(ctx, light, -9, -28, 73, 73);
+    paintNpcExpression(ctx, closed);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.encoding = THREE.sRGBEncoding;
+    return texture;
+  }
+
+  function paintNpcClothing(ctx, palette) {
+    ctx.fillStyle = palette.cloth;
+    ctx.fillRect(0, 0, 256, 128);
+    const dye = ctx.createLinearGradient(0, 0, 0, 128);
+    dye.addColorStop(0, 'rgba(255,240,208,.16)');
+    dye.addColorStop(.47, 'rgba(255,240,208,0)');
+    dye.addColorStop(1, 'rgba(67,48,46,.19)');
+    ctx.fillStyle = dye;
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.strokeStyle = 'rgba(255,240,205,.09)';
+    ctx.lineWidth = 1;
+    for (let y = 3; y < 128; y += 4) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
+    }
+
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = palette.trim;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(113, 10); ctx.quadraticCurveTo(128, 25, 143, 10);
+    ctx.stroke();
+    if (palette.outfit === 'apron') {
+      ctx.fillStyle = palette.trim;
+      ctx.fillRect(108, 14, 4, 28);
+      ctx.fillRect(144, 14, 4, 28);
+      ctx.beginPath();
+      ctx.moveTo(109, 34); ctx.lineTo(147, 34); ctx.lineTo(158, 104);
+      ctx.quadraticCurveTo(128, 112, 98, 104);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(101,61,48,.18)';
+      ctx.fillRect(117, 69, 22, 17);
+      ctx.strokeStyle = 'rgba(255,248,225,.62)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(117, 68); ctx.lineTo(139, 68); ctx.stroke();
+    } else if (palette.outfit === 'pockets') {
+      ctx.fillStyle = palette.trim;
+      ctx.fillRect(106, 58, 12, 12);
+      ctx.fillRect(139, 58, 12, 12);
+      npcEllipse(ctx, palette.trim, 128, 38, 4, 4);
+    } else {
+      ctx.fillStyle = 'rgba(48,49,43,.17)';
+      ctx.fillRect(127, 22, 2, 82);
+      for (let y = 34; y < 96; y += 16) npcEllipse(ctx, palette.trim, 131, y, 2, 2);
+    }
+    ctx.fillStyle = 'rgba(255,234,193,.22)';
+    ctx.fillRect(0, 111, 256, 2);
+  }
+
+  function makeNpcOutfit(palette) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 128;
+    paintNpcClothing(canvas.getContext('2d'), palette);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.encoding = THREE.sRGBEncoding;
+    return texture;
+  }
+
+  function makeNpcPortrait(palette) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 144;
+    canvas.className = 'npc-portrait';
+    canvas.setAttribute('aria-hidden', 'true');
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(72, 146, 55, 49, 0, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.translate(-118, 94);
+    ctx.scale(1.485, .7);
+    paintNpcClothing(ctx, palette);
+    ctx.restore();
+
+    if (palette.headwear === 'scarf') {
+      npcEllipse(ctx, palette.accent, 72, 64, 52, 53);
+      npcEllipse(ctx, palette.accent, 72, 106, 37, 15);
+    } else {
+      npcEllipse(ctx, palette.skin, 27, 72, 8, 12);
+      npcEllipse(ctx, palette.skin, 117, 72, 8, 12);
+    }
+    npcEllipse(ctx, palette.skin, 72, 65, 45, 42);
+    if (palette.headwear === 'cap') {
+      npcEllipse(ctx, palette.accent, 72, 30, 42, 18);
+      npcEllipse(ctx, palette.accent, 75, 42, 47, 5, -.09);
+    } else if (palette.headwear === 'hair') {
+      npcEllipse(ctx, palette.accent, 69, 29, 42, 14, -.15);
+      npcEllipse(ctx, palette.accent, 51, 37, 28, 10, -.27);
+    }
+    ctx.translate(72, 66);
+    ctx.scale(.76, .76);
+    paintNpcExpression(ctx, false);
+    return canvas;
   }
 
   function makeTexture(kind) {
     const c = document.createElement('canvas'); c.width = 512; c.height = 512;
     const x = c.getContext('2d'); let seed = kind === 'stone' ? 41 : 83;
     const rand = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
-    if (kind === 'stone') {
-      x.fillStyle = '#8f7656'; x.fillRect(0, 0, 512, 512);
-      for (let row = 0; row < 16; row++) {
-        const h = 32, shift = row % 2 ? -31 : 0;
-        for (let xx = shift; xx < 550; xx += 72 + Math.floor(rand() * 22)) {
-          const w = 62 + Math.floor(rand() * 30), yy = row * h;
-          const colors = ['#f0d59d', '#d8b579', '#e9c98e', '#c9a36f', '#f4dfb3', '#d2ad79'];
-          x.fillStyle = '#806746'; x.fillRect(xx, yy, w, h);
-          x.fillStyle = colors[Math.floor(rand() * colors.length)]; x.fillRect(xx + 3, yy + 3, w - 7, h - 7);
-          x.fillStyle = '#fff0c7'; x.globalAlpha = .82; x.fillRect(xx + 5, yy + 4, w - 12, 3); x.globalAlpha = 1;
-          x.fillStyle = '#9d7a50'; x.globalAlpha = .4; x.fillRect(xx + 4, yy + h - 6, w - 9, 2); x.globalAlpha = 1;
-          for (let s = 0; s < 24; s++) {
-            x.fillStyle = rand() > .5 ? '#fff1ca' : '#9a774e'; x.globalAlpha = .25 + rand() * .25;
-            x.fillRect(xx + 4 + rand() * (w - 8), yy + 4 + rand() * (h - 8), 1 + rand() * 3, 1 + rand() * 2);
-          }
-          x.globalAlpha = 1;
-        }
-      }
-    } else if (kind === 'paving') {
-      x.fillStyle = '#b69d77'; x.fillRect(0, 0, 512, 512);
-      const colors = ['#f1dfb8', '#deca9f', '#ead6ad', '#d2bd94', '#f5e5c5'];
-      for (let y = 0; y < 512; y += 42) for (let xx = -30; xx < 550; xx += 62) {
-        const off = ((y / 42) % 2) ? 31 : 0, px = xx + off;
-        x.fillStyle = '#a78d68'; x.fillRect(px, y, 60, 40);
-        x.fillStyle = colors[Math.floor(rand() * colors.length)]; x.fillRect(px + 2, y + 2, 56, 36);
-        x.fillStyle = '#fff0cf'; x.globalAlpha = .75; x.fillRect(px + 4, y + 3, 52, 2); x.globalAlpha = 1;
-        for (let i = 0; i < 6; i++) { x.fillStyle = rand() > .5 ? '#c2a77e' : '#fff2d4'; x.globalAlpha = .33; x.fillRect(px + rand() * 54, y + rand() * 34, 2, 2); }
+    if (kind === 'soil') {
+      x.fillStyle = '#b8996c'; x.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 2200; i++) {
+        const tone = ['#d6bd8c', '#8c704d', '#ead3a0', '#9d8058'][Math.floor(rand() * 4)];
+        x.globalAlpha = .12 + rand() * .25; x.fillStyle = tone;
+        const size = 1 + rand() * 5; x.beginPath(); x.ellipse(rand() * 512, rand() * 512, size * 1.5, size, rand(), 0, Math.PI * 2); x.fill();
       }
       x.globalAlpha = 1;
+    } else if (kind === 'stone' || kind === 'paving') {
+      paintMasonry(x, rand, kind === 'paving');
+    } else if (kind === 'grass') {
+      x.fillStyle = '#7c9057'; x.fillRect(0, 0, 512, 512);
+      const colors = ['#b0ad72', '#5f7c54', '#9caa61', '#687847'];
+      for (let i = 0; i < 3400; i++) {
+        x.fillStyle = colors[i % colors.length];
+        x.globalAlpha = .17 + rand() * .24;
+        x.beginPath(); x.ellipse(rand() * 512, rand() * 512, 1 + rand() * 5, 1 + rand() * 2, rand() * Math.PI, 0, Math.PI * 2); x.fill();
+      }
+      x.globalAlpha = 1;
+      const edge = x.createRadialGradient(256, 256, 173, 256, 256, 254);
+      edge.addColorStop(0, '#ffffff'); edge.addColorStop(1, 'rgba(255,255,255,0)');
+      x.globalCompositeOperation = 'destination-in';
+      x.fillStyle = edge; x.fillRect(0, 0, 512, 512);
+      x.globalCompositeOperation = 'source-over';
     } else if (kind === 'wood') {
       x.fillStyle = '#7b4b2e'; x.fillRect(0, 0, 512, 512);
       for (let y = 0; y < 512; y += 74) {
@@ -693,21 +1371,95 @@
       }
       x.globalAlpha = 1;
     } else {
-      // Blue-green water streaks on a turquoise base; animated UV drift suggests a gentle current.
-      x.fillStyle = '#2d9fa9'; x.fillRect(0, 0, 512, 512);
-      for (let i = 0; i < 150; i++) {
-        const yy = rand() * 512, xx = rand() * 512, len = 12 + rand() * 82;
-        x.strokeStyle = rand() > .42 ? '#a9eee0' : '#277e8b'; x.globalAlpha = .18 + rand() * .38; x.lineWidth = 1 + rand() * 3;
-        x.beginPath(); x.moveTo(xx, yy); x.bezierCurveTo(xx + len * .3, yy - 4, xx + len * .7, yy + 4, xx + len, yy); x.stroke();
+      x.fillStyle = '#448e91'; x.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 70; i++) {
+        const px = rand() * 512, py = rand() * 512, radius = 20 + rand() * 60;
+        for (const dx of [-512, 0, 512]) for (const dy of [-512, 0, 512]) {
+          const cx = px + dx, cy = py + dy;
+          if (cx + radius < 0 || cx - radius > 512 || cy + radius < 0 || cy - radius > 512) continue;
+          const wash = x.createRadialGradient(cx, cy, 0, cx, cy, radius);
+          wash.addColorStop(0, i % 3 ? 'rgba(125,191,175,.21)' : 'rgba(20,92,105,.22)');
+          wash.addColorStop(1, 'rgba(0,0,0,0)');
+          x.fillStyle = wash; x.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+        }
       }
-      x.globalAlpha = 1;
+      for (let i = 0; i < 104; i++) {
+        const py = 8 + rand() * 496, px = rand() * 512, length = 14 + rand() * 95;
+        const arc = 2 + rand() * 5, tint = i % 4 ? 'rgba(190,229,206,.22)' : 'rgba(20,94,109,.24)';
+        for (const start of [px, px - 512]) {
+          x.beginPath(); x.moveTo(start, py);
+          x.quadraticCurveTo(start + length * .5, py - arc, start + length, py + 2);
+          x.quadraticCurveTo(start + length * .48, py - arc + 2.7, start, py);
+          x.fillStyle = tint; x.fill();
+        }
+      }
     }
     const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 4; tex.encoding = THREE.sRGBEncoding; return tex;
   }
 
-  function loadProgress() {
-    try { const s = JSON.parse(localStorage.getItem('urfa-balikligol-story') || '{}'); return { guide: !!s.guide, tokens: Array.isArray(s.tokens) ? s.tokens.filter(n => n >= 0 && n < 3) : [] }; }
-    catch (_) { return { guide: false, tokens: [] }; }
+  function paintMasonry(context, random, paving) {
+    const size = 512, rows = paving ? 10 : 7, columns = paving ? 7 : 5;
+    const colors = paving
+      ? ['#d6c6aa', '#d7c9b5', '#cbbd9e', '#c5baa6', '#dfcdb2', '#c1b69f']
+      : ['#d7c49e', '#d0b996', '#e1cba6', '#d8c7aa', '#c9b493', '#e0ceb3'];
+    const stamp = document.createElement('canvas'); stamp.width = 192; stamp.height = 88;
+    const brush = stamp.getContext('2d');
+    context.fillStyle = paving ? '#a69e8a' : '#ab977c'; context.fillRect(0, 0, size, size);
+
+    for (let row = 0; row < rows; row++) {
+      const y = Math.floor(row * size / rows);
+      const height = Math.floor((row + 1) * size / rows) - y;
+      let x = row % 2 ? 41 : 0;
+      const cuts = Array.from({ length: columns - 1 }, (_, i) => Math.round((i + 1) * size / columns + (random() - .5) * 34));
+      let previous = 0;
+      for (const cut of [...cuts, size]) {
+        const width = cut - previous;
+        previous = cut;
+        const w = width - 3, h = height - 3, bevel = 3 + random() * 4;
+        brush.clearRect(0, 0, stamp.width, stamp.height);
+        brush.save();
+        brush.beginPath();
+        brush.moveTo(bevel, 0); brush.lineTo(w - bevel, 0);
+        brush.quadraticCurveTo(w, 0, w, bevel);
+        brush.lineTo(w - 1, h - bevel); brush.quadraticCurveTo(w - 2, h, w - bevel - 1, h);
+        brush.lineTo(bevel, h - 1); brush.quadraticCurveTo(0, h - 2, 0, h - bevel - 1);
+        brush.lineTo(0, bevel); brush.quadraticCurveTo(0, 0, bevel, 0);
+        brush.closePath(); brush.clip();
+        brush.fillStyle = colors[Math.floor(random() * colors.length)]; brush.fillRect(0, 0, w, h);
+        const light = brush.createLinearGradient(0, 0, w * .32, h);
+        light.addColorStop(0, 'rgba(255,248,225,.46)');
+        light.addColorStop(.37, 'rgba(255,248,225,0)');
+        light.addColorStop(.78, 'rgba(101,78,48,0)');
+        light.addColorStop(1, 'rgba(101,78,48,.25)');
+        brush.fillStyle = light; brush.fillRect(0, 0, w, h);
+        for (let mark = 0; mark < 36; mark++) {
+          brush.fillStyle = mark % 3 ? 'rgba(100,85,60,.12)' : 'rgba(255,249,225,.25)';
+          brush.beginPath();
+          brush.ellipse(random() * w, random() * h, .5 + random() * 4.3, .4 + random() * 1.65, random() * Math.PI, 0, Math.PI * 2);
+          brush.fill();
+        }
+        brush.restore();
+        context.drawImage(stamp, 0, 0, w, h, x + 1, y + 1, w, h);
+        if (x + width > size) context.drawImage(stamp, 0, 0, w, h, x + 1 - size, y + 1, w, h);
+        x += width;
+      }
+    }
+  }
+
+  function loadProgress(maps) {
+    function read(key) {
+      try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
+    }
+    const current = read('urfa-kasifler-levels-v1');
+    const legacy = read('urfa-balikligol-v2') || read('urfa-balikligol-story');
+    return {
+      levels: maps.map((map, index) => {
+        const level = current?.levels?.[index] ?? (index === 0 ? legacy : null);
+        const tokens = Array.isArray(level?.tokens)
+          ? [...new Set(level.tokens.filter(id => Number.isInteger(id) && id >= 0 && id < map.items.length))]
+          : [];
+        return { guide: !!level?.guide, tokens };
+      })
+    };
   }
 })();
-

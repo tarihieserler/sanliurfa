@@ -4,27 +4,36 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#d9c193">
-  <meta name="description" content="Balıklıgöl'de çocuklar için birinci şahıs keşif macerası.">
-  <title>Urfa'nın Minik Kaşifleri — Balıklıgöl</title>
+  <meta name="description" content="Şanlıurfa mimarisinden ilham alan hayalî bir su bahçesinde çocuklar için 3D keşif macerası.">
+  <title>Urfa'nın Minik Kaşifleri — Göl Bahçesi</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main id="game" aria-label="Balıklıgöl 3D keşif oyunu"></main>
+  <main id="game" aria-label="Urfa esintili 3D keşif oyunu"></main>
   <section id="welcome" class="overlay">
     <div class="welcome-card">
-      <div class="eyebrow">ŞANLIURFA · BÖLÜM 1</div>
-      <h1>Balıklıgöl'ün<br><span>İzinde</span></h1>
-      <p>Göl kıyısında rehberini bul, tarihî yapıları tanı ve üç parıltılı hatırayı keşfet.</p>
+      <div class="eyebrow">ŞANLIURFA · 3D KEŞİF</div>
+      <h1>Urfa’nın Minik<br><span>Kaşifleri</span></h1>
+      <p>Göl Bahçesi’nde hatıraları ara, ardından Usta Avlusu’ndaki atölyeleri keşfet.</p>
       <div class="controls-note"><span>⌨️</span> WASD ile yürü <i>·</i><span>🖱️</span> Fare ile bak<br><span>📱</span> Joystick ile yürü, ekrana dokunup sürükleyerek bak</div>
-      <button id="start" class="primary">Balıklıgöl'e git <span>→</span></button>
-      <small>Oyunda anlatılan yerel efsaneler, tarihî bilgilerden ayrı belirtilir.</small>
+      <button id="start" class="primary">Bölüm seç <span aria-hidden="true">→</span></button>
+      <small>Bu oyun gerçek bir tarihî mekânın birebir kopyası değildir; Urfa'dan esinlenen hayalî bir yerdir.</small>
+    </div>
+  </section>
+  <section id="level-select" class="overlay hidden" aria-labelledby="level-title">
+    <div class="level-card">
+      <div class="eyebrow">KAŞİF HARİTASI</div>
+      <h2 id="level-title">Bölüm seç</h2>
+      <p id="level-message" aria-live="polite">Keşfetmek istediğin bölümü seç.</p>
+      <div id="level-options" class="level-options"></div>
+      <button id="level-back" class="level-back" type="button">← Ana menü</button>
     </div>
   </section>
   <header id="hud" class="hidden">
-    <div class="quest"><span>🧭</span><div><small>GÖREV</small><b id="quest-text">Rehber Zeynep'i bul</b></div></div>
-    <div class="collect"><span>✨</span><b id="collect-count">0</b><small>/ 3</small></div>
+    <div class="quest"><span>🧭</span><div><small id="level-name">Göl Bahçesi</small><b id="quest-text">Rehber Zeynep'i bul</b></div></div>
+    <div class="collect"><span>✨</span><b id="collect-count">0</b><small id="collect-total">/ 3</small></div>
     <button id="sound" class="hud-button" aria-label="Sesi aç veya kapat">🔊</button>
-    <button id="home" class="hud-button" aria-label="Ana menü">⌂</button>
+    <button id="home" class="hud-button" aria-label="Bölüm seçimi" title="Bölüm seçimi">⌂</button>
   </header>
   <div id="crosshair" class="hidden"><i></i></div>
   <div id="interaction-hint" class="hint hidden">E — konuş / keşfet</div>
@@ -32,7 +41,7 @@
   <button id="touch-action" class="touch-action hidden" aria-label="Konuş veya keşfet">✋</button>
   <div id="look-hint" class="look-hint hidden">Ekranı sürükle: kamerayı çevir</div>
   <section id="dialog" class="dialog hidden" role="dialog" aria-modal="true">
-    <div class="dialog-card"><div id="speaker-icon" class="speaker-icon">🧕🏻</div><div id="speaker-name" class="speaker-name">Rehber Zeynep</div><p id="dialog-text"></p><div class="dialog-footer"><small id="dialog-progress"></small><button id="dialog-next" class="primary small">Devam <span>→</span></button></div></div>
+    <div id="dialog-card" class="dialog-card"><div class="dialog-heading"><div id="speaker-icon" class="speaker-icon">🧕🏻</div><div><div class="dialog-kicker">KÜÇÜK BİR URFA HİKÂYESİ</div><div id="speaker-name" class="speaker-name">Rehber Zeynep</div></div></div><div class="dialog-progress-track"><i id="dialog-progress-bar"></i></div><div class="dialog-bubble"><span class="bubble-tail"></span><div id="dialog-cue" class="dialog-cue">Birlikte keşfedelim!</div><p id="dialog-text"></p></div><div class="dialog-footer"><small id="dialog-progress"></small><button id="dialog-next" class="primary small">Devam <span>→</span></button></div><div id="dialog-tip" class="dialog-tip">İpucu: Hikâyeyi kendi hızında okumak için Devam’a dokun.</div></div>
   </section>
   <div id="toast" class="toast hidden" role="status"></div>
   <section id="error" class="error hidden"><div><h2>Oyun açılamadı</h2><p id="error-message">3D sahne başlatılamadı.</p><button onclick="location.reload()" class="primary small">Yeniden dene</button></div></section>
@@ -56,4 +65,3 @@
   </script>
 </body>
 </html>
-
